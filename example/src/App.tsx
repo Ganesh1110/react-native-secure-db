@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -9,9 +9,7 @@ import {
   NativeModules,
   ActivityIndicator,
 } from 'react-native';
-import SecureDB from 'react-native-secure-db';
-
-declare const global: { NativeDB: any };
+import { SecureDB } from 'react-native-secure-db';
 
 const ITEM_COUNT = 1000;
 
@@ -23,12 +21,11 @@ export default function App() {
     throughput: string;
   } | null>(null);
 
-  const initDB = useCallback(() => {
-    SecureDB.install();
+  // Initialize the database instance
+  const db = useMemo(() => {
     const docPath = NativeModules.SecureDBInstaller?.getDocumentDirectory() || '/tmp';
     const dbFile = `${docPath}/benchmark.db`;
-    // 10MB allocation for heavy benchmark
-    global.NativeDB.initStorage(dbFile, 10 * 1024 * 1024);
+    return new SecureDB(dbFile, 10 * 1024 * 1024);
   }, []);
 
   const runBenchmark = async () => {
@@ -39,8 +36,8 @@ export default function App() {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     try {
-      initDB();
-      global.NativeDB.clearStorage();
+      // Clear previous data for a clean benchmark
+      db.clear();
 
       const testData = {
         id: "bench_user_123",
@@ -52,7 +49,7 @@ export default function App() {
       // 1. Bulk Write Benchmark
       const writeStart = performance.now();
       for (let i = 0; i < ITEM_COUNT; i++) {
-        global.NativeDB.insertRec(`key_${i}`, testData);
+        db.set(`key_${i}`, testData);
       }
       const writeEnd = performance.now();
       const writeTime = writeEnd - writeStart;
@@ -60,7 +57,7 @@ export default function App() {
       // 2. Bulk Read Benchmark
       const readStart = performance.now();
       for (let i = 0; i < ITEM_COUNT; i++) {
-        global.NativeDB.findRec(`key_${i}`);
+        db.get(`key_${i}`);
       }
       const readEnd = performance.now();
       const readTime = readEnd - readStart;
@@ -75,7 +72,7 @@ export default function App() {
         throughput: `${throughput} ops/sec`,
       });
     } catch (e: any) {
-      console.error(e);
+      console.error("Benchmark Error:", e);
     } finally {
       setIsRunning(false);
     }
@@ -131,9 +128,9 @@ export default function App() {
         <View style={styles.metaInfo}>
           <Text style={styles.metaTitle}>Benchmark Methodology</Text>
           <Text style={styles.metaText}>• Sequential JSI synchronous calls</Text>
-          <Text style={styles.metaText}>• Binary serialization via Msgpack</Text>
-          <Text style={styles.metaText}>• C++ B+ Tree index traversal</Text>
-          <Text style={styles.metaText}>• Hardware-backed AES-256-GCM context</Text>
+          <Text style={styles.metaText}>• Hardware-backed AES-256 KeyStore</Text>
+          <Text style={styles.metaText}>• C++ B+ Tree with Node Splitting</Text>
+          <Text style={styles.metaText}>• Thread-safe Shared Mutex access</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
