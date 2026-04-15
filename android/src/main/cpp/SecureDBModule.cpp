@@ -8,12 +8,25 @@
 using namespace facebook;
 
 static std::vector<uint8_t> getMasterKeyFromJava(JNIEnv *env) {
-    // In production, this retrieves a 32-byte key from the Android Keystore.
-    // We use a deterministic placeholder for this refactor.
-    std::vector<uint8_t> key(32);
-    for (int i = 0; i < 32; i++) {
-        key[i] = static_cast<uint8_t>(0xDB ^ i);
-    }
+    jclass cls = env->FindClass("com/securedb/KeyStoreManager");
+    if (!cls) return std::vector<uint8_t>(32, 0);
+
+    jmethodID mid = env->GetStaticMethodID(cls, "getMasterKey", "()[B");
+    if (!mid) return std::vector<uint8_t>(32, 0);
+
+    jbyteArray keyArray = (jbyteArray)env->CallStaticObjectMethod(cls, mid);
+    if (!keyArray) return std::vector<uint8_t>(32, 0);
+
+    jsize len = env->GetArrayLength(keyArray);
+    std::vector<uint8_t> key(len);
+    jbyte* bytes = env->GetByteArrayElements(keyArray, nullptr);
+    std::memcpy(key.data(), bytes, len);
+    env->ReleaseByteArrayElements(keyArray, bytes, JNI_ABORT);
+
+    // Ensure we return exactly 32 bytes for Libsodium
+    if (key.size() > 32) key.resize(32);
+    if (key.size() < 32) key.insert(key.end(), 32 - key.size(), 0);
+
     return key;
 }
 

@@ -31,6 +31,7 @@ set(REACT_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../node_modules/react-native")
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp/include
     ${CMAKE_CURRENT_SOURCE_DIR}/generated/jni
     ${CMAKE_CURRENT_SOURCE_DIR}/generated/jni/react/renderer/components/SecureDBSpec
     ${REACT_NATIVE_DIR}/ReactCommon/jsi
