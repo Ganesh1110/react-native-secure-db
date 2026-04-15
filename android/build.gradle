@@ -54,7 +54,7 @@ android {
 
     sourceSets {
         main {
-            java.srcDirs += ["src/main/java", "generated/java"]
+            java.srcDirs = ["src/main/java"]
         }
     }
 }
