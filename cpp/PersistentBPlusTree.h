@@ -45,7 +45,7 @@ public:
     void init();
     void initWithConfig(const BTreeNodeConfig& config);
     
-    void insert(const std::string& key, size_t data_offset);
+    void insert(const std::string& key, size_t data_offset, bool shouldCheckpoint = true);
     
     size_t find(const std::string& key);
     

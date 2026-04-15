@@ -19,6 +19,11 @@ public class KeyStoreManager {
     private static final int GCM_TAG_LENGTH = 128;
 
     private static byte[] cachedKey = null;
+    private static android.content.Context staticContext = null;
+
+    public static void setContext(android.content.Context context) {
+        staticContext = context;
+    }
 
     public static byte[] getMasterKey() {
         if (cachedKey != null) {
@@ -48,7 +53,7 @@ public class KeyStoreManager {
             SecretKey secretKey = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
             cachedKey = secretKey.getEncoded();
             
-            if (cachedKey == null) {
+            if (cachedKey == null && staticContext != null) {
                 cachedKey = generateAndStoreDerivedKey(keyStore, secretKey);
             }
             
@@ -70,7 +75,7 @@ public class KeyStoreManager {
             byte[] encryptedKey = cipher.doFinal(derivedKey);
 
             java.io.FileOutputStream fos = new java.io.FileOutputStream(
-                    new java.io.File(new android.content.ContextWrapper(null).getFilesDir(), "securedb.key"));
+                    new java.io.File(staticContext.getFilesDir(), "securedb.key"));
             fos.write(encryptedKey);
             fos.close();
 

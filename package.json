@@ -124,13 +124,12 @@
     "type": "modules",
     "jsSrcsDir": "src",
     "outputDir": {
-      "ios": "ios/generated",
-      "android": "android/generated"
+      "ios": "ios/generated"
     },
     "android": {
       "javaPackageName": "com.securedb"
     },
-    "includesGeneratedCode": true
+    "includesGeneratedCode": false
   },
   "prettier": {
     "quoteProps": "consistent",

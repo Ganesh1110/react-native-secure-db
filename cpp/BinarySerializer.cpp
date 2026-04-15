@@ -34,7 +34,7 @@ void BinarySerializer::serialize(facebook::jsi::Runtime& rt, const facebook::jsi
         if (obj.isArray(rt)) {
             packType(arena, BinaryType::Array);
             facebook::jsi::Array arr = obj.getArray(rt);
-            uint32_t len = static_cast<uint32_t>(arr.length(rt));
+            uint32_t len = static_cast<uint32_t>(arr.size(rt));
             
             uint8_t* len_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
             std::memcpy(len_ptr, &len, sizeof(uint32_t));
@@ -45,7 +45,7 @@ void BinarySerializer::serialize(facebook::jsi::Runtime& rt, const facebook::jsi
         } else {
             packType(arena, BinaryType::Object);
             facebook::jsi::Array keys = obj.getPropertyNames(rt);
-            uint32_t len = static_cast<uint32_t>(keys.length(rt));
+            uint32_t len = static_cast<uint32_t>(keys.size(rt));
             
             uint8_t* len_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
             std::memcpy(len_ptr, &len, sizeof(uint32_t));

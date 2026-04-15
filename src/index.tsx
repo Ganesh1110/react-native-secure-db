@@ -13,6 +13,7 @@ declare const global: {
     setMulti(entries: Record<string, any>): boolean;
     getMultiple(keys: string[]): Record<string, any>;
     remove(key: string): boolean;
+    deleteAll(): boolean;
     rangeQuery(
       startKey: string,
       endKey: string
@@ -34,16 +35,16 @@ export interface RangeQueryResult {
 }
 
 export class SecureDB {
-  static install() {
+  static install(): boolean {
     if (!NativeSecureDB) {
       console.error(
         "SecureDB: Native module 'SecureDB' not found. " +
           'Ensure you have rebuilt the native app (npx react-native run-ios / run-android) ' +
           'and that the module is correctly linked.'
       );
-      return;
+      return false;
     }
-    NativeSecureDB.install();
+    return NativeSecureDB.install();
   }
 
   static getDocumentsDirectory(): string {
@@ -65,7 +66,16 @@ export class SecureDB {
           'SecureDB: Native module not found. Check your native build.'
         );
       }
-      SecureDB.install();
+
+      // Try to install and check for NativeDB
+      for (let i = 0; i < 3; i++) {
+        SecureDB.install();
+        if (typeof global.NativeDB !== 'undefined') {
+          break;
+        }
+        // Small delay if not found immediately (for New Arch async behavior)
+        // Note: blocking in JSI is not ideal but this is initialization
+      }
 
       if (typeof global.NativeDB === 'undefined') {
         throw new Error(
@@ -104,6 +114,11 @@ export class SecureDB {
   remove(key: string): boolean {
     this.ensureInitialized();
     return global.NativeDB.remove(key);
+  }
+
+  deleteAll(): boolean {
+    this.ensureInitialized();
+    return global.NativeDB.deleteAll();
   }
 
   rangeQuery(startKey: string, endKey: string): RangeQueryResult[] {

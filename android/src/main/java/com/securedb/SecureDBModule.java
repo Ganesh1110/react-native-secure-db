@@ -11,6 +11,7 @@ public class SecureDBModule extends NativeSecureDBSpec {
 
     public SecureDBModule(ReactApplicationContext reactContext) {
         super(reactContext);
+        KeyStoreManager.setContext(reactContext);
     }
 
     @Override
@@ -26,12 +27,21 @@ public class SecureDBModule extends NativeSecureDBSpec {
     private native void nativeInstall(long jsiRuntimePointer);
 
     @Override
-    public void install() {
+    public boolean install() {
         ReactApplicationContext context = getReactApplicationContext();
         if (context != null && context.getJavaScriptContextHolder() != null) {
             long jsiRuntimePointer = context.getJavaScriptContextHolder().get();
-            nativeInstall(jsiRuntimePointer);
+            if (jsiRuntimePointer != 0) {
+                android.util.Log.i("SecureDB", "Installing JSI Engine with runtime pointer: " + jsiRuntimePointer);
+                nativeInstall(jsiRuntimePointer);
+                return true;
+            } else {
+                android.util.Log.e("SecureDB", "JSI Runtime pointer is null (0)");
+            }
+        } else {
+            android.util.Log.e("SecureDB", "ReactContext or JavaScriptContextHolder is null");
         }
+        return false;
     }
 
     @Override

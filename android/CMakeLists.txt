@@ -5,15 +5,14 @@ set(PACKAGE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 add_library(
     react-native-secure-db    SHARED
-    ${PACKAGE_ROOT}/cpp/SecureDBImpl.cpp
-    ${PACKAGE_ROOT}/cpp/DBEngine.cpp
-    ${PACKAGE_ROOT}/cpp/PersistentBPlusTree.cpp
-    ${PACKAGE_ROOT}/cpp/WALManager.cpp
-    ${PACKAGE_ROOT}/cpp/MMapRegion.cpp
-    ${PACKAGE_ROOT}/cpp/BinarySerializer.cpp
-    ${PACKAGE_ROOT}/cpp/BufferedBTree.cpp
-    src/main/cpp/SecureCryptoAndroid.cpp
     src/main/cpp/SecureDBModule.cpp
+    ../cpp/BinarySerializer.cpp
+    ../cpp/BufferedBTree.cpp
+    ../cpp/DBEngine.cpp
+    ../cpp/MMapRegion.cpp
+    ../cpp/PersistentBPlusTree.cpp
+    ../cpp/WALManager.cpp
+    ../cpp/SodiumCryptoContext.cpp
 )
 
 set_target_properties(
@@ -23,19 +22,29 @@ set_target_properties(
     CXX_EXTENSIONS OFF
 )
 
-# Include directories - will be provided by Prefab from host React Native
+set(REACT_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../node_modules/react-native")
+
 include_directories(
-    ${PACKAGE_ROOT}/cpp
-    src/main/cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/generated/jni
     ${CMAKE_CURRENT_SOURCE_DIR}/generated/jni/react/renderer/components/SecureDBSpec
+    ${REACT_NATIVE_DIR}/ReactCommon/jsi
+    ${REACT_NATIVE_DIR}/ReactCommon
+    ${REACT_NATIVE_DIR}/React
 )
 
-# Link libraries - Prefab will resolve these from host React Native
-target_link_libraries(
-    react-native-secure-db
-    jsi
-    reactnative
-    log
-    android
+# Find system libraries
+find_library(LOG_LIB log)
+find_library(ANDROID_LIB android)
+find_library(SODIUM_LIB sodium)
+
+# React Native prefab targets
+find_package(ReactAndroid REQUIRED CONFIG)
+
+target_link_libraries(react-native-secure-db
+    ${LOG_LIB}
+    ${ANDROID_LIB}
+    ${SODIUM_LIB}
+    ReactAndroid::jsi
+    ReactAndroid::reactnative
 )

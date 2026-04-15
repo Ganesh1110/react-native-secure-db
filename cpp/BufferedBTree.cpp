@@ -26,7 +26,7 @@ void BufferedBTree::insert(const std::string& key, size_t data_offset) {
         // Flush buffer sequentially for this Phase 4 prototype.
         // Moving this loop to a std::thread background worker achieves true Zero-Latency inserts.
         for (const auto& op : write_buffer_) {
-            tree_->insert(op.key, op.data_offset);
+            tree_->insert(op.key, op.data_offset, false);
         }
         tree_->checkpoint();
         write_buffer_.clear();
@@ -53,7 +53,7 @@ void BufferedBTree::flush() {
     if (write_buffer_.empty()) return;
     
     for (const auto& op : write_buffer_) {
-        tree_->insert(op.key, op.data_offset);
+        tree_->insert(op.key, op.data_offset, false);
     }
     tree_->checkpoint();
     write_buffer_.clear();

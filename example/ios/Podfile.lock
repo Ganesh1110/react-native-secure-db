@@ -3,28 +3,6 @@ PODS:
   - hermes-engine (250829098.0.10):
     - hermes-engine/Pre-built (= 250829098.0.10)
   - hermes-engine/Pre-built (250829098.0.10)
-  - SecureDB (0.1.0):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
   - RCTDeprecation (0.85.0)
   - RCTRequired (0.85.0)
   - RCTSwiftUI (0.85.0)
@@ -1384,6 +1362,28 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
+  - react-native-mmkv (3.3.3):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - React-NativeModulesApple (0.85.0):
     - hermes-engine
     - React-callinvoker
@@ -1769,12 +1769,33 @@ PODS:
     - React-utils (= 0.85.0)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.85.0)
+  - SecureDB (0.1.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - Yoga (0.0.0)
 
 DEPENDENCIES:
   - FBLazyVector (from `../../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
-  - SecureDB (from `../..`)
   - RCTDeprecation (from `../../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../../node_modules/react-native/Libraries/Required`)
   - RCTSwiftUI (from `../../node_modules/react-native/ReactApple/RCTSwiftUI`)
@@ -1812,6 +1833,7 @@ DEPENDENCIES:
   - React-logger (from `../../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-mmkv (from `../../node_modules/react-native-mmkv`)
   - React-NativeModulesApple (from `../../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-networking (from `../../node_modules/react-native/ReactCommon/react/networking`)
   - React-oscompat (from `../../node_modules/react-native/ReactCommon/oscompat`)
@@ -1846,6 +1868,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - SecureDB (from `../..`)
   - Yoga (from `../../node_modules/react-native/ReactCommon/yoga`)
 
 EXTERNAL SOURCES:
@@ -1854,8 +1877,6 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.10
-  SecureDB:
-    :path: "../.."
   RCTDeprecation:
     :path: "../../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation"
   RCTRequired:
@@ -1928,6 +1949,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-mmkv:
+    :path: "../../node_modules/react-native-mmkv"
   React-NativeModulesApple:
     :path: "../../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios"
   React-networking:
@@ -1996,13 +2019,14 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  SecureDB:
+    :path: "../.."
   Yoga:
     :path: "../../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
   FBLazyVector: c00c20551d40126351a6783c47ce75f5b374851b
-  hermes-engine: 5a2cb0f9bf302fd100929ca73a094cc68769b45b
-  SecureDB: f86bb655287378db149bede8fb7c6526e7ec1408
+  hermes-engine: 98d3b0a650318d97c3fff43259a3a9d01d31a029
   RCTDeprecation: 3bb167081b134461cfeb875ff7ae1945f8635257
   RCTRequired: 74839f55d5058a133a0bc4569b0afec750957f64
   RCTSwiftUI: 87a316382f3eab4dd13d2a0d0fd2adcce917361a
@@ -2011,7 +2035,7 @@ SPEC CHECKSUMS:
   React: 1b1536b9099195944034e65b1830f463caaa8390
   React-callinvoker: 6dff6d17d1d6cc8fdf85468a649bafed473c65f5
   React-Core: 00faa4d038298089a1d5a5b21dde8660c4f0820d
-  React-Core-prebuilt: e58a513475e5b4114afb29242a2927c818520e64
+  React-Core-prebuilt: 9eb97198d75b66f9017e238927185f032eb3ba17
   React-CoreModules: a17807f849bfd86045b0b9a75ec8c19373b482f6
   React-cxxreact: c7b53ace5827be54048288bce5c55f337c41e95f
   React-debug: e1f00fcd2cef58a2897471a6d76a4ef5f5f90c74
@@ -2039,6 +2063,7 @@ SPEC CHECKSUMS:
   React-logger: ee47d5f3b59a46a006c65038ed5d0b1143e37510
   React-Mapbuffer: 7f8bfbe3fcb2203db4ccb3975414af8cabe4bcd0
   React-microtasksnativemodule: ca1f33f7c98b76d923f550d39631eb4e05fa9aec
+  react-native-mmkv: ffda49ce01998ce9c48f87cb8413f67300abc206
   React-NativeModulesApple: 9c1f8815ebd72cc1c75587fe588513f6dd9cb708
   React-networking: 8f75f882c6794e91e28b458b5bc1461034098c80
   React-oscompat: 5361d0fa7905ba1c3b3c5e7c464d6be9d2d85f4b
@@ -2072,9 +2097,10 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 5787b37b8e2e51dfeab697ec031cc7c4080dcea2
   ReactCodegen: 2f0ae2f4bdb77897a207e3f8f26f767d94b2eecd
   ReactCommon: fe2a3af8975e63efa60f95fca8c34dc85deee360
-  ReactNativeDependencies: bf891d07bb6aef3dd5d020e5d004b558ebed7297
+  ReactNativeDependencies: 57bb021de0075739759d8b28e0c4cc4f9adf3a14
+  SecureDB: 6f5726616db46ad339c862678a500c5cb91d1fe6
   Yoga: e83c3121d079541e69f3c5c623faaaf933fb5812
 
-PODFILE CHECKSUM: d2cc461052ebe807ed29e9c2403192e8fa7a35af
+PODFILE CHECKSUM: 0b602bdc5b064992212da087eb9c40831592affd
 
 COCOAPODS: 1.16.2

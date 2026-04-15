@@ -4,12 +4,17 @@
 #include <vector>
 #include <shared_mutex>
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 namespace secure_db {
 
 DBEngine::DBEngine(std::unique_ptr<SecureCryptoContext> crypto) 
     : start_time_(std::chrono::high_resolution_clock::now()),
       crypto_(std::move(crypto)),
-      next_free_offset_(8192) {
+      next_free_offset_(1024 * 1024),
+      arena_(1024 * 1024) { // 1MB reusable buffer
 }
 
 facebook::jsi::Value DBEngine::get(
@@ -206,6 +211,16 @@ facebook::jsi::Value DBEngine::get(
         );
     }
     
+    if (propName == "deleteAll") {
+        return facebook::jsi::Function::createFromHostFunction(
+            runtime, name, 0,
+            [this](facebook::jsi::Runtime& runtime, const facebook::jsi::Value& thisValue, const facebook::jsi::Value* args, size_t count) -> facebook::jsi::Value {
+                std::unique_lock lock(rw_mutex_);
+                return facebook::jsi::Value(this->deleteAll());
+            }
+        );
+    }
+    
     return facebook::jsi::Value::undefined();
 }
 
@@ -290,73 +305,93 @@ std::string DBEngine::read(size_t offset, size_t length) {
 }
 
 facebook::jsi::Value DBEngine::insertRec(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj) {
+    return this->insertRecInternal(runtime, key, obj, true);
+}
+
+facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj, bool shouldCommit) {
     if (!btree_ || !mmap_) return facebook::jsi::Value(false);
     
-    // Step 1: Use ArenaAllocator avoiding std::bad_alloc/new leakages dictated across heavy batch ops
-    ArenaAllocator arena(1024 * 64); // 64KB sandbox
-    BinarySerializer::serialize(runtime, obj, arena);
-    
-    // Step 2: Grab sequential offset and commit using Encryption proxy
-    size_t offset = next_free_offset_;
-    std::vector<uint8_t> final_payload;
-    
-    if (crypto_) {
-        final_payload = crypto_->encrypt(arena.data(), arena.size());
-    } else {
-        final_payload.assign(arena.data(), arena.data() + arena.size());
+    try {
+        // Step 1: Use reusable ArenaAllocator avoiding std::bad_alloc/new leakages
+        arena_.reset();
+        BinarySerializer::serialize(runtime, obj, arena_);
+        
+        // Step 2: Grab sequential offset and commit using Encryption proxy
+        size_t offset = next_free_offset_;
+        std::vector<uint8_t> final_payload;
+        
+        if (crypto_) {
+            final_payload = crypto_->encrypt(arena_.data(), arena_.size());
+        } else {
+            final_payload.assign(arena_.data(), arena_.data() + arena_.size());
+        }
+        
+        size_t payload_len = final_payload.size();
+        
+        uint32_t len32 = static_cast<uint32_t>(payload_len);
+        std::string len_marker(reinterpret_cast<const char*>(&len32), sizeof(uint32_t));
+        std::string data(reinterpret_cast<const char*>(final_payload.data()), payload_len);
+        
+        // Phase 6: Using WAL for atomicity across data write and B-tree update
+        if (wal_) {
+            wal_->logPageWrite(offset, len_marker);
+            wal_->logPageWrite(offset + sizeof(uint32_t), data);
+        } else {
+            mmap_->write(offset, len_marker);
+            mmap_->write(offset + sizeof(uint32_t), data);
+        }
+        
+        // Push the needle cursor to point cleanly behind the record
+        next_free_offset_ += sizeof(uint32_t) + payload_len;
+        pbtree_->setNextFreeOffset(next_free_offset_);
+        
+        // Step 3: Trigger the zero-latency queued background logic
+        btree_->insert(key, offset);
+        
+        if (shouldCommit && wal_) {
+            wal_->logCommit();
+        }
+        
+        return facebook::jsi::Value(true);
+    } catch (const std::exception& e) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "SecureDB", "insertRec error: %s", e.what());
+#endif
+        std::cerr << "SecureDB insertRec error: " << e.what() << "\n";
+        return facebook::jsi::Value(false);
     }
-    
-    size_t payload_len = final_payload.size();
-    
-    uint32_t len32 = static_cast<uint32_t>(payload_len);
-    std::string len_marker(reinterpret_cast<const char*>(&len32), sizeof(uint32_t));
-    std::string data(reinterpret_cast<const char*>(final_payload.data()), payload_len);
-    
-    // Phase 6: Using WAL for atomicity across data write and B-tree update
-    if (wal_) {
-        wal_->logPageWrite(offset, len_marker);
-        wal_->logPageWrite(offset + sizeof(uint32_t), data);
-    } else {
-        mmap_->write(offset, len_marker);
-        mmap_->write(offset + sizeof(uint32_t), data);
-    }
-    
-    // Push the needle cursor to point cleanly behind the record
-    next_free_offset_ += sizeof(uint32_t) + payload_len;
-    pbtree_->setNextFreeOffset(next_free_offset_);
-    
-    // Step 3: Trigger the zero-latency queued background logic
-    btree_->insert(key, offset);
-    
-    if (wal_) {
-        wal_->logCommit();
-    }
-    
-    return facebook::jsi::Value(true);
 }
 
 facebook::jsi::Value DBEngine::findRec(facebook::jsi::Runtime& runtime, const std::string& key) {
     if (!btree_ || !mmap_) return facebook::jsi::Value::undefined();
     
-    size_t offset = btree_->find(key);
-    if (offset == 0) return facebook::jsi::Value::undefined();
-    
-    std::string len_bytes = mmap_->read(offset, sizeof(uint32_t));
-    uint32_t payload_len;
-    std::memcpy(&payload_len, len_bytes.data(), sizeof(uint32_t));
-    
-    std::string data_bytes = mmap_->read(offset + sizeof(uint32_t), payload_len);
-    
-    std::vector<uint8_t> decrypted;
-    if (crypto_) {
-        decrypted = crypto_->decrypt(reinterpret_cast<const uint8_t*>(data_bytes.data()), payload_len);
-    } else {
-        decrypted.assign(data_bytes.begin(), data_bytes.end());
+    try {
+        size_t offset = btree_->find(key);
+        if (offset == 0) return facebook::jsi::Value::undefined();
+        
+        std::string len_bytes = mmap_->read(offset, sizeof(uint32_t));
+        uint32_t payload_len;
+        std::memcpy(&payload_len, len_bytes.data(), sizeof(uint32_t));
+        
+        std::string data_bytes = mmap_->read(offset + sizeof(uint32_t), payload_len);
+        
+        std::vector<uint8_t> decrypted;
+        if (crypto_) {
+            decrypted = crypto_->decrypt(reinterpret_cast<const uint8_t*>(data_bytes.data()), payload_len);
+        } else {
+            decrypted.assign(data_bytes.begin(), data_bytes.end());
+        }
+        
+        auto [val, consumed] = BinarySerializer::deserialize(runtime, decrypted.data(), decrypted.size());
+        
+        return std::move(val);
+    } catch (const std::exception& e) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "SecureDB", "findRec error: %s", e.what());
+#endif
+        std::cerr << "SecureDB findRec error: " << e.what() << "\n";
+        return facebook::jsi::Value::undefined();
     }
-    
-    auto [val, consumed] = BinarySerializer::deserialize(runtime, decrypted.data(), decrypted.size());
-    
-    return std::move(val);
 }
 
 bool DBEngine::clearStorage() {
@@ -379,12 +414,18 @@ bool DBEngine::clearStorage() {
 }
 
 void installDBEngine(facebook::jsi::Runtime& runtime, std::unique_ptr<SecureCryptoContext> crypto) {
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "SecureDB", "installDBEngine: creating HostObject");
+#endif
     auto dbEngine = std::make_shared<DBEngine>(std::move(crypto));
     runtime.global().setProperty(
         runtime,
         "NativeDB",
         facebook::jsi::Object::createFromHostObject(runtime, dbEngine)
     );
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "SecureDB", "installDBEngine: NativeDB set on global");
+#endif
 }
 
 facebook::jsi::Value DBEngine::setMulti(facebook::jsi::Runtime& runtime, const facebook::jsi::Value& entries) {
@@ -394,23 +435,27 @@ facebook::jsi::Value DBEngine::setMulti(facebook::jsi::Runtime& runtime, const f
     
     facebook::jsi::Object obj = entries.asObject(runtime);
     auto propNames = obj.getPropertyNames(runtime);
-    size_t count = propNames.size();
+    size_t count = propNames.size(runtime);
     
     for (size_t i = 0; i < count; i++) {
         auto key = propNames.getValueAtIndex(runtime, i).asString(runtime);
         auto value = obj.getProperty(runtime, key);
-        insertRec(runtime, key.utf8(runtime), value);
+        insertRecInternal(runtime, key.utf8(runtime), value, false);
+    }
+    
+    if (wal_) {
+        wal_->logCommit();
     }
     
     return facebook::jsi::Value(true);
 }
 
 facebook::jsi::Value DBEngine::getMultiple(facebook::jsi::Runtime& runtime, const facebook::jsi::Value& keys) {
-    if (!keys.isArray()) {
+    if (!keys.isObject() || !keys.asObject(runtime).isArray(runtime)) {
         return facebook::jsi::Value::undefined();
     }
     
-    facebook::jsi::Array keyArray = keys.asArray(runtime);
+    facebook::jsi::Array keyArray = keys.asObject(runtime).asArray(runtime);
     size_t count = keyArray.size(runtime);
     auto result = facebook::jsi::Object(runtime);
     
@@ -446,7 +491,7 @@ std::vector<std::pair<std::string, facebook::jsi::Value>> DBEngine::rangeQuery(
     for (const auto& [key, offset] : rangeResults) {
         if (offset > 0) {
             auto value = findRec(runtime, key);
-            results.emplace_back(key, value);
+            results.emplace_back(key, std::move(value));
         }
     }
     
@@ -459,6 +504,10 @@ std::vector<std::string> DBEngine::getAllKeys() {
     if (!btree_) return keys;
     
     return btree_->getAllKeys();
+}
+
+bool DBEngine::deleteAll() {
+    return clearStorage();
 }
 
 }

@@ -60,8 +60,11 @@ public:
     );
     
     std::vector<std::string> getAllKeys();
+    bool deleteAll();
     
 private:
+    facebook::jsi::Value insertRecInternal(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj, bool shouldCommit);
+    
     mutable std::shared_mutex rw_mutex_;
     std::chrono::high_resolution_clock::time_point start_time_;
     std::unique_ptr<SecureCryptoContext> crypto_;
@@ -69,7 +72,8 @@ private:
     std::unique_ptr<PersistentBPlusTree> pbtree_;
     std::unique_ptr<BufferedBTree> btree_;
     std::unique_ptr<WALManager> wal_;
-    size_t next_free_offset_; // Simple free space offset tracker for the prototype
+    size_t next_free_offset_;
+    ArenaAllocator arena_;
 };
 
 void installDBEngine(facebook::jsi::Runtime& runtime, std::unique_ptr<SecureCryptoContext> crypto = nullptr);

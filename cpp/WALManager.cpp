@@ -35,7 +35,6 @@ void WALManager::appendRecord(const WALRecordHeader& header, const std::string& 
     if (!payload.empty()) {
         wal_file_.write(payload.data(), payload.size());
     }
-    wal_file_.flush();
 }
 
 void WALManager::logPageWrite(uint64_t offset, const std::string& data) {
@@ -63,12 +62,14 @@ void WALManager::logCommit() {
     header.checksum = 0;
 
     appendRecord(header, "");
+    wal_file_.flush();
 }
 
 void WALManager::checkpoint() {
     // In a full implementation, this would:
     // 1. Flush all main DB pages (msync).
     // 2. Truncate WAL.
+    wal_file_.flush();
     clear();
 }
 

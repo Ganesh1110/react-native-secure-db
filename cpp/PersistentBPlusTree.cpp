@@ -3,6 +3,7 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
+#include <functional>
 
 namespace secure_db {
 
@@ -39,7 +40,7 @@ void PersistentBPlusTree::init() {
         header_.root_offset = 4096;
         header_.node_count = 1;
         header_.height = 1;
-        header_.next_free_offset = 8192;
+        header_.next_free_offset = 1024 * 1024; // Align with DBEngine start offset
         header_.free_list_head = 0;
         
         BTreeNode root_node;
@@ -110,7 +111,7 @@ BTreeNode PersistentBPlusTree::read_node(uint64_t offset) {
     return node;
 }
 
-void PersistentBPlusTree::insert(const std::string& key, size_t data_offset) {
+void PersistentBPlusTree::insert(const std::string& key, size_t data_offset, bool shouldCheckpoint) {
     uint64_t root_off = header_.root_offset;
     BTreeNode root = read_node(root_off);
     
@@ -128,7 +129,10 @@ void PersistentBPlusTree::insert(const std::string& key, size_t data_offset) {
     } else {
         insert_non_full(root_off, key, data_offset);
     }
-    checkpoint();
+    
+    if (shouldCheckpoint) {
+        checkpoint();
+    }
 }
 
 void PersistentBPlusTree::split_child(uint64_t parent_off, BTreeNode& parent, uint32_t child_idx, uint64_t child_off, BTreeNode& child) {
@@ -140,6 +144,7 @@ void PersistentBPlusTree::split_child(uint64_t parent_off, BTreeNode& parent, ui
     
     for (uint32_t j = 0; j < sibling.num_keys; j++) {
         std::strncpy(sibling.keys[j], child.keys[j + t + 1], 63);
+        sibling.keys[j][63] = '\0';
         sibling.values[j] = child.values[j + t + 1];
     }
     
@@ -159,10 +164,12 @@ void PersistentBPlusTree::split_child(uint64_t parent_off, BTreeNode& parent, ui
     
     for (uint32_t j = parent.num_keys; j > child_idx; j--) {
         std::strncpy(parent.keys[j], parent.keys[j - 1], 63);
+        parent.keys[j][63] = '\0';
         parent.values[j] = parent.values[j - 1];
     }
     
     std::strncpy(parent.keys[child_idx], child.keys[t], 63);
+    parent.keys[child_idx][63] = '\0';
     parent.values[child_idx] = child.values[t];
     parent.num_keys++;
     
@@ -178,6 +185,7 @@ void PersistentBPlusTree::insert_non_full(uint64_t node_off, const std::string& 
     if (node.is_leaf) {
         while (i >= 0 && key < std::string(node.keys[i])) {
             std::strncpy(node.keys[i + 1], node.keys[i], 63);
+            node.keys[i + 1][63] = '\0';
             node.values[i + 1] = node.values[i];
             i--;
         }
@@ -186,6 +194,7 @@ void PersistentBPlusTree::insert_non_full(uint64_t node_off, const std::string& 
             node.values[i] = data_offset;
         } else {
             std::strncpy(node.keys[i + 1], key.c_str(), 63);
+            node.keys[i + 1][63] = '\0';
             node.values[i + 1] = data_offset;
             node.num_keys++;
         }

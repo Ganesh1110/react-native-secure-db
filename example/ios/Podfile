@@ -18,6 +18,7 @@ if linkage != nil
 end
 
 target 'SecureDBExample' do
+  project 'JSIStorageExample.xcodeproj'
   config = use_native_modules!
 
   use_react_native!(
