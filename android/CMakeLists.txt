@@ -3,6 +3,11 @@ project(SecureDB)
 
 set(PACKAGE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
+# Libsodium configuration for Android
+add_library(sodium SHARED IMPORTED)
+set_target_properties(sodium PROPERTIES IMPORTED_LOCATION 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main/jniLibs/${ANDROID_ABI}/libsodium.so)
+
 add_library(
     react-native-secure-db    SHARED
     src/main/cpp/SecureDBModule.cpp
@@ -36,7 +41,6 @@ include_directories(
 # Find system libraries
 find_library(LOG_LIB log)
 find_library(ANDROID_LIB android)
-find_library(SODIUM_LIB sodium)
 
 # React Native prefab targets
 find_package(ReactAndroid REQUIRED CONFIG)
@@ -44,7 +48,7 @@ find_package(ReactAndroid REQUIRED CONFIG)
 target_link_libraries(react-native-secure-db
     ${LOG_LIB}
     ${ANDROID_LIB}
-    ${SODIUM_LIB}
+    sodium
     ReactAndroid::jsi
     ReactAndroid::reactnative
 )
