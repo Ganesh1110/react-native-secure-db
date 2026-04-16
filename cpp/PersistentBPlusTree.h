@@ -4,29 +4,13 @@
 #include <cstdint>
 #include <vector>
 
+#include <unordered_map>
+#include <mutex>
+#include <memory>
+
 namespace secure_db {
 
 uint32_t calculate_crc32(const uint8_t* data, size_t length);
-
-#pragma pack(push, 1)
-struct TreeHeader {
-    uint64_t magic;
-    uint64_t root_offset;
-    uint64_t free_list_head;
-    uint64_t next_free_offset;
-    uint32_t height;
-    uint32_t node_count;
-    uint32_t checksum;
-};
-#pragma pack(pop)
-
-struct BTreeNodeConfig {
-    uint32_t max_keys = 32;
-    uint32_t key_size = 64;
-    
-    BTreeNodeConfig() = default;
-    BTreeNodeConfig(uint32_t mk, uint32_t ks) : max_keys(mk), key_size(ks) {}
-};
 
 struct BTreeNode {
     bool is_leaf;
@@ -37,6 +21,42 @@ struct BTreeNode {
     char keys[MAX_KEYS + 1][KEY_SIZE];
     uint64_t values[MAX_KEYS + 1];
     uint64_t children[MAX_KEYS + 2];
+};
+
+// Hot Node Cache for B+ Tree Pages
+class BTreeNodeCache {
+public:
+    static constexpr size_t MAX_CACHE_SIZE = 1024; // ~4MB RAM footprint
+
+    bool get(uint64_t offset, BTreeNode& node) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = cache_.find(offset);
+        if (it != cache_.end()) {
+            node = *it->second;
+            return true;
+        }
+        return false;
+    }
+
+    void put(uint64_t offset, const BTreeNode& node) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (cache_.size() >= MAX_CACHE_SIZE) cache_.clear();
+        cache_[offset] = std::make_shared<BTreeNode>(node);
+    }
+
+    void remove(uint64_t offset) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        cache_.erase(offset);
+    }
+
+    void clear() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        cache_.clear();
+    }
+
+private:
+    std::unordered_map<uint64_t, std::shared_ptr<BTreeNode>> cache_;
+    std::mutex mutex_;
 };
 
 class PersistentBPlusTree {
@@ -65,6 +85,7 @@ private:
     class WALManager* wal_;
     TreeHeader header_;
     BTreeNodeConfig config_;
+    BTreeNodeCache cache_;
     
     uint64_t allocate_node(bool is_leaf);
     void write_node(uint64_t offset, const BTreeNode& node);

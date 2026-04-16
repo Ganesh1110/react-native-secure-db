@@ -520,9 +520,6 @@ facebook::jsi::Value DBEngine::setMulti(facebook::jsi::Runtime& runtime, const f
             btree_->insert(key, offset);
         }
         
-        // TURBO MODE: Flush immediately for speed
-        btree_->flush();
-        
         pbtree_->setNextFreeOffset(next_free_offset_);
         
         return facebook::jsi::Value(true);
