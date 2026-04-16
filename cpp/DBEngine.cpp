@@ -69,6 +69,10 @@ facebook::jsi::Value DBEngine::get(
 ) {
     std::string propName = name.utf8(runtime);
     
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "SecureDB", "getProperty called for: '%s'", propName.c_str());
+#endif
+    
     if (propName == "add") {
         return facebook::jsi::Function::createFromHostFunction(
             runtime,
@@ -211,24 +215,36 @@ facebook::jsi::Value DBEngine::get(
         );
     }
     
-    if (propName == "remove" || propName == "del") {
+    if (propName == "remove") {
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "SecureDB", "getProperty: handling del/remove");
+        __android_log_print(ANDROID_LOG_INFO, "SecureDB", "getProperty: 'remove' handler");
+#endif
+        return facebook::jsi::Function::createFromHostFunction(
+            runtime, name, 1,
+            [this](facebook::jsi::Runtime& runtime, const facebook::jsi::Value& thisValue, const facebook::jsi::Value* args, size_t count) -> facebook::jsi::Value {
+                std::unique_lock lock(rw_mutex_);
+                std::string key = args[0].getString(runtime).utf8(runtime);
+                bool result = this->remove(key);
+                return facebook::jsi::Value(result);
+            }
+        );
+    }
+    
+    if (propName == "del") {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "SecureDB", "getProperty: 'del' handler");
 #endif
         return facebook::jsi::Function::createFromHostFunction(
             runtime, name, 1,
             [this](facebook::jsi::Runtime& runtime, const facebook::jsi::Value& thisValue, const facebook::jsi::Value* args, size_t count) -> facebook::jsi::Value {
 #ifdef __ANDROID__
-                __android_log_print(ANDROID_LOG_INFO, "SecureDB", "del function called");
+                __android_log_print(ANDROID_LOG_INFO, "SecureDB", "del called, count=%zu", count);
 #endif
                 std::unique_lock lock(rw_mutex_);
                 std::string key = args[0].getString(runtime).utf8(runtime);
-#ifdef __ANDROID__
-                __android_log_print(ANDROID_LOG_INFO, "SecureDB", "del key: %s", key.c_str());
-#endif
                 bool result = this->remove(key);
 #ifdef __ANDROID__
-                __android_log_print(ANDROID_LOG_INFO, "SecureDB", "del result: %d", result);
+                __android_log_print(ANDROID_LOG_INFO, "SecureDB", "del result=%d", result);
 #endif
                 return facebook::jsi::Value(result);
             }

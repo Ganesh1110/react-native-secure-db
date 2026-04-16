@@ -47,17 +47,16 @@ export interface RangeQueryResult {
 }
 
 export class SecureDB {
-  static install(): boolean {
+  static install(): void {
     if (!NativeSecureDB) {
       console.error(
         "SecureDB: Native module 'SecureDB' not found. " +
           'Ensure you have rebuilt the native app (npx react-native run-ios / run-android) ' +
           'and that the module is correctly linked.'
       );
-      return false;
+      return;
     }
     NativeSecureDB.install();
-    return true;
   }
 
   static getDocumentsDirectory(): string {

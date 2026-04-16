@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -140,16 +140,17 @@ export default function App() {
   const [allKeys, setAllKeys] = useState<string[]>([]);
   const [getResult, setGetResult] = useState<string>('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [statusType, setStatusType] = useState<'success' | 'error' | 'info'>(
+    'info'
+  );
   const [rangeStart, setRangeStart] = useState('a');
   const [rangeEnd, setRangeEnd] = useState('z');
 
-  const db = useMemo(() => {
-    const docPath = SecureDB.getDocumentsDirectory();
-    const dbFile = `${docPath}/secure_v1.db`;
-    return new SecureDB(dbFile, 10 * 1024 * 1024);
-  }, []);
+  const [db, setDb] = useState<SecureDB | null>(null);
 
   const refreshKeys = useCallback(() => {
+    if (!db) return;
     try {
       setAllKeys(db.getAllKeys());
     } catch (e) {
@@ -159,54 +160,148 @@ export default function App() {
 
   useEffect(() => {
     SecureDB.install();
-    setDbPath(SecureDB.getDocumentsDirectory());
-    refreshKeys();
-  }, [refreshKeys]);
+    const docPath = SecureDB.getDocumentsDirectory();
+    const dbFile = `${docPath}/secure_v1.db`;
+    setDb(new SecureDB(dbFile, 10 * 1024 * 1024));
+    setDbPath(docPath);
+  }, []);
+
+  useEffect(() => {
+    if (db) {
+      refreshKeys();
+    }
+  }, [db, refreshKeys]);
 
   const handleSet = () => {
-    if (!key) return Alert.alert('Error', 'Key required');
+    if (!db) return;
+    if (!key) {
+      setStatusType('error');
+      setStatusMessage('Please enter a key');
+      return;
+    }
     try {
       const data =
         value.startsWith('{') || value.startsWith('[')
           ? JSON.parse(value)
           : value;
-      if (db.set(key, data)) {
+      const success = db.set(key, data);
+      if (success) {
         setKey('');
         setValue('');
+        setGetResult('');
         refreshKeys();
+        setStatusType('success');
+        setStatusMessage(`Saved: ${key}`);
+        setTimeout(() => setStatusMessage(''), 2000);
+      } else {
+        setStatusType('error');
+        setStatusMessage('Failed to save key');
       }
     } catch (e) {
-      Alert.alert('Error', String(e));
+      setStatusType('error');
+      setStatusMessage(`Invalid value: ${String(e)}`);
+      setTimeout(() => setStatusMessage(''), 3000);
     }
   };
 
   const handleGet = () => {
+    if (!db) return;
+    if (!key) {
+      setStatusType('error');
+      setStatusMessage('Please enter a key');
+      return;
+    }
     const res = db.get(key);
-    setGetResult(
-      res === undefined ? 'Not found' : JSON.stringify(res, null, 2)
+    if (res === undefined) {
+      setGetResult('NOT FOUND');
+      setStatusType('error');
+      setStatusMessage(`Key not found: ${key}`);
+    } else {
+      setGetResult(JSON.stringify(res, null, 2));
+      setStatusType('info');
+      setStatusMessage(`Found: ${key}`);
+      setTimeout(() => setStatusMessage(''), 2000);
+    }
+  };
+
+  const handleDel = () => {
+    if (!key) {
+      setStatusType('error');
+      setStatusMessage('Please enter a key');
+      return;
+    }
+    if (!db) {
+      console.log('handleDel: db is not initialized');
+      setStatusType('error');
+      setStatusMessage('Database not initialized');
+      return;
+    }
+    console.log(
+      'handleDel: checking global.NativeDB.del:',
+      typeof (global as any).NativeDB?.del
     );
+    console.log(
+      'handleDel: checking global.NativeDB.remove:',
+      typeof (global as any).NativeDB?.remove
+    );
+    Alert.alert('Delete Key', `Are you sure you want to delete "${key}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          try {
+            console.log('handleDel: calling db.del');
+            const result = db.del(key);
+            console.log('handleDel: result:', result);
+            if (result) {
+              setGetResult('');
+              refreshKeys();
+              setStatusType('success');
+              setStatusMessage(`Deleted: ${key}`);
+              setTimeout(() => setStatusMessage(''), 2000);
+            } else {
+              setStatusType('error');
+              setStatusMessage(`Key not found: ${key}`);
+            }
+          } catch (e) {
+            console.log('handleDel: error:', e);
+            setStatusType('error');
+            setStatusMessage(`Error: ${String(e)}`);
+            setTimeout(() => setStatusMessage(''), 3000);
+          }
+        },
+      },
+    ]);
   };
 
   const handleRange = () => {
+    if (!db) return;
+    if (!rangeStart || !rangeEnd) {
+      Alert.alert('Error', 'Please enter start and end keys');
+      return;
+    }
     const results = db.rangeQuery(rangeStart, rangeEnd);
-    Alert.alert(
-      'Range Query',
-      `Found ${results.length} items. Check console for details.`
-    );
-    console.log('Range Results:', results);
+    Alert.alert('Range Query', `Found ${results.length} items`, [
+      { text: 'OK' },
+      {
+        text: 'View Details',
+        onPress: () => console.log('Range Results:', results),
+      },
+    ]);
   };
 
   const handleTurboInsert = () => {
+    if (!db) return;
     const start = Date.now();
     const batch: Record<string, any> = {};
-    for (let i = 0; i < 500; i++)
+    for (let i = 0; i < 500; i++) {
       batch[`turbo_${i}`] = { id: i, ts: Date.now() };
+    }
     db.setMulti(batch);
-    Alert.alert(
-      'Turbo Success',
-      `Inserted 500 records in ${Date.now() - start}ms`
-    );
+    const elapsed = Date.now() - start;
     refreshKeys();
+    Alert.alert('Turbo Success', `Inserted 500 records in ${elapsed}ms`);
   };
 
   return (
@@ -247,6 +342,29 @@ export default function App() {
               </Text>
             </View>
 
+            {statusMessage ? (
+              <View
+                style={[
+                  styles.statusBanner,
+                  statusType === 'success' && styles.statusSuccess,
+                  statusType === 'error' && styles.statusError,
+                  statusType === 'info' && styles.statusInfo,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    statusType === 'error' && styles.statusTextError,
+                  ]}
+                >
+                  {statusMessage}
+                </Text>
+                <TouchableOpacity onPress={() => setStatusMessage('')}>
+                  <Text style={styles.statusClose}>×</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Instant Access</Text>
               <TextInput
@@ -267,35 +385,22 @@ export default function App() {
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity style={styles.button} onPress={handleSet}>
-                  <Text style={styles.buttonText}>SET</Text>
+                  <Text style={styles.buttonText}>+ SET</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.button, { backgroundColor: '#EF4444' }]}
+                  style={[styles.button, { backgroundColor: '#3B82F6' }]}
                   onPress={handleGet}
                 >
                   <Text style={[styles.buttonText, { color: '#fff' }]}>
-                    GET
+                    ? GET
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.button, { backgroundColor: '#EF4444' }]}
-                  onPress={() => {
-                    console.log('DEL: calling with key:', key);
-                    console.log(
-                      'DEL: global.NativeDB.del:',
-                      typeof (global as any).NativeDB?.del
-                    );
-                    try {
-                      const result = db.del(key);
-                      console.log('DEL: result:', result);
-                    } catch (e) {
-                      console.log('DEL: error:', e);
-                    }
-                    refreshKeys();
-                  }}
+                  style={[styles.button, { backgroundColor: '#F59E0B' }]}
+                  onPress={handleDel}
                 >
                   <Text style={[styles.buttonText, { color: '#fff' }]}>
-                    DEL
+                    × DEL
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -340,7 +445,7 @@ export default function App() {
                     onPress={handleRange}
                   >
                     <Text style={styles.advancedButtonText}>
-                      Execute Native Range Query
+                      ⚡ Range Query
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -350,20 +455,35 @@ export default function App() {
                     <Text
                       style={[styles.advancedButtonText, { color: '#22C55E' }]}
                     >
-                      Bulk Turbo Insert (500 ops)
+                      ⚡ Turbo Bulk Insert (500)
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.advancedButton, { borderColor: '#EF4444' }]}
                     onPress={() => {
-                      db.clear();
-                      refreshKeys();
+                      Alert.alert(
+                        'Wipe Database',
+                        'Are you sure? This will delete all data!',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete All',
+                            style: 'destructive',
+                            onPress: () => {
+                              if (db) {
+                                db.clear();
+                                refreshKeys();
+                              }
+                            },
+                          },
+                        ]
+                      );
                     }}
                   >
                     <Text
                       style={[styles.advancedButtonText, { color: '#EF4444' }]}
                     >
-                      Wipe Database
+                      ⚠ Wipe Database
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -633,5 +753,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     textAlign: 'center',
+  },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 15,
+  },
+  statusSuccess: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: '#22C55E',
+  },
+  statusError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  statusInfo: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  statusText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F8FAFC',
+  },
+  statusTextError: {
+    color: '#EF4444',
+  },
+  statusClose: {
+    fontSize: 20,
+    color: '#94A3B8',
+    marginLeft: 10,
+    paddingHorizontal: 5,
   },
 });
