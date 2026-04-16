@@ -46,6 +46,7 @@ void MMapRegion::init(const std::string& path, size_t size) {
     base_addr_ = ::mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
     if (base_addr_ == MAP_FAILED) {
         ::close(fd_);
+        fd_ = -1;
         throw std::runtime_error("MMapRegion: Failed to mmap file");
     }
     

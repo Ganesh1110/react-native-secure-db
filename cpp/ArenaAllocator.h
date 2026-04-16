@@ -18,6 +18,10 @@ public:
         delete[] buffer_;
     }
 
+    // Disable copying to prevent double-free
+    ArenaAllocator(const ArenaAllocator&) = delete;
+    ArenaAllocator& operator=(const ArenaAllocator&) = delete;
+
     void* allocate(size_t bytes) {
         if (offset_ + bytes > capacity_) {
             // In a real system, you might chain arenas together.

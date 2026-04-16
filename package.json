@@ -6,8 +6,10 @@
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
     ".": {
-      "source": "./src/index.tsx",
+      "import": "./lib/module/index.js",
+      "require": "./lib/commonjs/index.js",
       "types": "./lib/typescript/src/index.d.ts",
+      "browser": "./src/index.web.ts",
       "default": "./lib/module/index.js"
     },
     "./package.json": "./package.json"

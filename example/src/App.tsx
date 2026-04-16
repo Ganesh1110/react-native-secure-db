@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -7,12 +7,13 @@ import {
   View,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SecureDB } from 'react-native-secure-db';
 // @ts-ignore - Assuming MMKV is installed in the project environment
 import { MMKV } from 'react-native-mmkv';
 
-const ITEM_COUNT = 5000;
+const ITEM_COUNT = 1000; // Reduced for smoother UI during mixed tests
 
 interface BenchResult {
   write: number;
@@ -25,11 +26,14 @@ export default function App() {
     null
   );
   const [mmkvResults, setMmkvResults] = useState<BenchResult | null>(null);
+  const [dbPath, setDbPath] = useState('');
+  const [allKeys, setAllKeys] = useState<string[]>([]);
+  const [rangeResults, setRangeResults] = useState<any[]>([]);
 
   const db = useMemo(() => {
     const docPath = SecureDB.getDocumentsDirectory();
-    const dbFile = `${docPath}/benchmark.db`;
-    return new SecureDB(dbFile, 50 * 1024 * 1024); // 50MB for heavy bench
+    const dbFile = `${docPath}/secure_v1.db`;
+    return new SecureDB(dbFile, 10 * 1024 * 1024); // 10MB
   }, []);
 
   const mmkv = useMemo(() => {
@@ -41,6 +45,21 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    setDbPath(SecureDB.getDocumentsDirectory());
+    refreshKeys();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const refreshKeys = () => {
+    try {
+      const keys = db.getAllKeys();
+      setAllKeys(keys);
+    } catch (e) {
+      console.error('Refresh Keys Error:', e);
+    }
+  };
+
   const runBenchmark = async () => {
     setIsRunning(true);
     setSecureDBResults(null);
@@ -49,11 +68,11 @@ export default function App() {
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     const testData = {
-      id: 'user_' + Math.random(),
+      id: 'user_' + Math.random().toString(36).substr(2, 9),
       name: 'Benchmark User',
       balance: 1234.56,
       metadata: { role: 'admin', level: 99 },
-      tags: ['jsi', 'secure', 'fast', 'database', 'mobile'],
+      tags: ['jsi', 'secure', 'fast', 'sodium'],
     };
 
     // --- SecureDB Benchmark ---
@@ -61,13 +80,16 @@ export default function App() {
       db.clear();
       const sWriteStart = performance.now();
       for (let i = 0; i < ITEM_COUNT; i++) {
-        db.set(`key_${i}`, testData);
+        db.set(`key_${i.toString().padStart(4, '0')}`, testData);
       }
+      // Note: SecureDB uses a Write Buffer (size 64).
+      // We can flush manually to measure full persistence time.
+      db.flush();
       const sWriteEnd = performance.now();
 
       const sReadStart = performance.now();
       for (let i = 0; i < ITEM_COUNT; i++) {
-        db.get(`key_${i}`);
+        db.get(`key_${i.toString().padStart(4, '0')}`);
       }
       const sReadEnd = performance.now();
 
@@ -75,8 +97,10 @@ export default function App() {
         write: sWriteEnd - sWriteStart,
         read: sReadEnd - sReadStart,
       });
+      refreshKeys();
     } catch (e) {
       console.error('SecureDB Bench Error:', e);
+      Alert.alert('SecureDB Error', String(e));
     }
 
     // --- MMKV Benchmark ---
@@ -87,13 +111,13 @@ export default function App() {
 
         const mWriteStart = performance.now();
         for (let i = 0; i < ITEM_COUNT; i++) {
-          mmkv.set(`key_${i}`, jsonStr);
+          mmkv.set(`key_${i.toString().padStart(4, '0')}`, jsonStr);
         }
         const mWriteEnd = performance.now();
 
         const mReadStart = performance.now();
         for (let i = 0; i < ITEM_COUNT; i++) {
-          const val = mmkv.getString(`key_${i}`);
+          const val = mmkv.getString(`key_${i.toString().padStart(4, '0')}`);
           if (val) JSON.parse(val);
         }
         const mReadEnd = performance.now();
@@ -108,6 +132,25 @@ export default function App() {
     }
 
     setIsRunning(false);
+  };
+
+  const testRangeQuery = () => {
+    try {
+      // Query keys between key_0010 and key_0020
+      const results = db.rangeQuery('key_0010', 'key_0020');
+      setRangeResults(results);
+      Alert.alert(
+        'Range Query',
+        `Found ${results.length} items in range [key_0010, key_0020]`
+      );
+    } catch (e) {
+      console.error('Range Query Error:', e);
+    }
+  };
+
+  const handleFlush = () => {
+    db.flush();
+    Alert.alert('Success', 'Write buffer flushed to disk tree.');
   };
 
   const renderStatRow = (
@@ -138,10 +181,24 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>Storage Duel</Text>
+          <Text style={styles.title}>SecureDB</Text>
           <Text style={styles.subtitle}>
-            SecureDB vs MMKV ({ITEM_COUNT} ops)
+            JSI + Libsodium + MMAP ({ITEM_COUNT} ops)
           </Text>
+        </View>
+
+        <View style={styles.metaCard}>
+          <Text style={styles.metaLabel}>Storage Path:</Text>
+          <Text
+            style={styles.metaValue}
+            numberOfLines={1}
+            ellipsizeMode="middle"
+          >
+            {dbPath || 'Loading...'}
+          </Text>
+          <View style={{ height: 8 }} />
+          <Text style={styles.metaLabel}>Total Keys:</Text>
+          <Text style={styles.metaValue}>{allKeys.length}</Text>
         </View>
 
         <View style={styles.card}>
@@ -155,39 +212,80 @@ export default function App() {
           {renderStatRow('Bulk Read', secureDBResults?.read, mmkvResults?.read)}
         </View>
 
-        {secureDBResults && mmkvResults && (
-          <View style={styles.winCard}>
-            <Text style={styles.winText}>
-              {secureDBResults.write < mmkvResults.write
-                ? 'SecureDB is faster at Writing! 🔥'
-                : 'MMKV is faster at Writing!'}
-            </Text>
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              isRunning && styles.buttonDisabled,
+              { flex: 2 },
+            ]}
+            onPress={runBenchmark}
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <ActivityIndicator color="#020617" />
+            ) : (
+              <Text style={styles.buttonText}>Run Benchmark</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.secondaryButton, { flex: 1, marginLeft: 12 }]}
+            onPress={handleFlush}
+          >
+            <Text style={styles.secondaryButtonText}>Flush</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.outlineButton}
+            onPress={testRangeQuery}
+          >
+            <Text style={styles.outlineButtonText}>Test Range Query</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.outlineButton, { marginLeft: 12 }]}
+            onPress={refreshKeys}
+          >
+            <Text style={styles.outlineButtonText}>Refresh Keys</Text>
+          </TouchableOpacity>
+        </View>
+
+        {rangeResults.length > 0 && (
+          <View style={styles.rangeCard}>
+            <Text style={styles.cardTitle}>Range Query Snippet</Text>
+            {rangeResults.slice(0, 3).map((item, i) => (
+              <Text key={i} style={styles.rangeText}>
+                {item.key}: {JSON.stringify(item.value).substring(0, 40)}...
+              </Text>
+            ))}
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.button, isRunning && styles.buttonDisabled]}
-          onPress={runBenchmark}
-          disabled={isRunning}
-        >
-          {isRunning ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Run Head-to-Head</Text>
-          )}
-        </TouchableOpacity>
-
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>Why this benchmark matters?</Text>
+          <Text style={styles.infoTitle}>Architecture Highlights</Text>
           <Text style={styles.infoText}>
-            • SecureDB uses Page-Level AES-256-GCM Hardware encryption.
+            •{' '}
+            <Text style={{ fontWeight: 'bold', color: '#fff' }}>
+              Sodium XChaCha20-Poly1305:
+            </Text>{' '}
+            AEAD encryption at the block level.
           </Text>
           <Text style={styles.infoText}>
-            • MMKV is an ultra-fast Key-Value store using protobuf.
+            •{' '}
+            <Text style={{ fontWeight: 'bold', color: '#fff' }}>
+              Page-Level WAL:
+            </Text>{' '}
+            Write Ahead Logging ensures atomicity even on crash.
           </Text>
           <Text style={styles.infoText}>
-            • This test includes JSON serialization/deserialization overhead for
-            both.
+            •{' '}
+            <Text style={{ fontWeight: 'bold', color: '#fff' }}>
+              Hybrid B+ Tree:
+            </Text>{' '}
+            Buffered writes with disk-persisted B+ Tree indexing.
           </Text>
         </View>
       </ScrollView>
@@ -198,69 +296,125 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#020617' },
   scrollContent: { padding: 24 },
-  header: { alignItems: 'center', marginVertical: 40 },
-  title: { fontSize: 40, fontWeight: '900', color: '#F8FAFC' },
-  subtitle: { fontSize: 16, color: '#94A3B8', marginTop: 8 },
+  header: { alignItems: 'center', marginVertical: 30 },
+  title: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    letterSpacing: -1,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+
+  metaCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#38BDF8',
+  },
+  metaLabel: {
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  metaValue: { color: '#94A3B8', fontSize: 13, marginTop: 2 },
+
   card: {
     backgroundColor: '#0F172A',
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
     borderColor: '#1E293B',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   cardTitle: {
     color: '#F8FAFC',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  statRow: { marginVertical: 12 },
+  statRow: { marginVertical: 8 },
   statRowLabel: {
-    color: '#94A3B8',
-    fontSize: 14,
-    textTransform: 'uppercase',
-    marginBottom: 12,
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   statValues: { flexDirection: 'row', justifyContent: 'space-between' },
   valBox: { flex: 1 },
-  valText: { color: '#38BDF8', fontSize: 24, fontWeight: 'bold' },
+  valText: { color: '#38BDF8', fontSize: 22, fontWeight: 'bold' },
   mmkvColor: { color: '#F472B6' },
-  valSubText: { color: '#475569', fontSize: 12, marginTop: 2 },
-  divider: { height: 1, backgroundColor: '#1E293B', marginVertical: 16 },
+  valSubText: { color: '#475569', fontSize: 11, marginTop: 2 },
+  divider: { height: 1, backgroundColor: '#1E293B', marginVertical: 12 },
+
+  actionRow: { flexDirection: 'row', marginBottom: 12 },
   button: {
     backgroundColor: '#F8FAFC',
-    paddingVertical: 18,
-    borderRadius: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#fff',
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    justifyContent: 'center',
   },
   buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#020617', fontSize: 18, fontWeight: 'bold' },
-  winCard: {
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-    padding: 16,
+  buttonText: { color: '#020617', fontSize: 16, fontWeight: 'bold' },
+
+  secondaryButton: {
+    backgroundColor: '#1E293B',
+    paddingVertical: 16,
     borderRadius: 12,
-    marginBottom: 24,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    justifyContent: 'center',
   },
-  winText: { color: '#38BDF8', fontWeight: 'bold', fontSize: 16 },
+  secondaryButtonText: { color: '#F8FAFC', fontSize: 16, fontWeight: 'bold' },
+
+  outlineButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  outlineButtonText: { color: '#94A3B8', fontSize: 14, fontWeight: '500' },
+
+  rangeCard: {
+    backgroundColor: 'rgba(56, 189, 248, 0.05)',
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.1)',
+  },
+  rangeText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontFamily: 'monospace',
+    marginBottom: 6,
+  },
+
   infoBox: {
-    marginTop: 40,
+    marginTop: 20,
     padding: 20,
     backgroundColor: '#0F172A',
     borderRadius: 16,
   },
   infoTitle: {
     color: '#F8FAFC',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  infoText: { color: '#64748B', fontSize: 14, lineHeight: 22, marginBottom: 8 },
+  infoText: {
+    color: '#64748B',
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
 });

@@ -10,60 +10,71 @@ static void packType(ArenaAllocator& arena, BinaryType t) {
 }
 
 void BinarySerializer::serialize(facebook::jsi::Runtime& rt, const facebook::jsi::Value& val, ArenaAllocator& arena) {
-    if (val.isNull() || val.isUndefined()) {
-        packType(arena, BinaryType::Null);
-    } else if (val.isBool()) {
-        packType(arena, BinaryType::Boolean);
-        uint8_t* ptr = static_cast<uint8_t*>(arena.allocate(1));
-        *ptr = val.getBool() ? 1 : 0;
-    } else if (val.isNumber()) {
-        packType(arena, BinaryType::Number);
-        double num = val.getNumber();
-        uint8_t* ptr = static_cast<uint8_t*>(arena.allocate(sizeof(double)));
-        std::memcpy(ptr, &num, sizeof(double));
-    } else if (val.isString()) {
-        packType(arena, BinaryType::String);
-        std::string str = val.getString(rt).utf8(rt);
-        uint32_t len = static_cast<uint32_t>(str.length());
-        uint8_t* len_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
-        std::memcpy(len_ptr, &len, sizeof(uint32_t));
-        uint8_t* str_ptr = static_cast<uint8_t*>(arena.allocate(len));
-        std::memcpy(str_ptr, str.data(), len);
-    } else if (val.isObject()) {
-        facebook::jsi::Object obj = val.getObject(rt);
-        if (obj.isArray(rt)) {
-            packType(arena, BinaryType::Array);
-            facebook::jsi::Array arr = obj.getArray(rt);
-            uint32_t len = static_cast<uint32_t>(arr.size(rt));
-            
+    try {
+        if (val.isNull() || val.isUndefined()) {
+            packType(arena, BinaryType::Null);
+        } else if (val.isBool()) {
+            packType(arena, BinaryType::Boolean);
+            uint8_t* ptr = static_cast<uint8_t*>(arena.allocate(1));
+            *ptr = val.getBool() ? 1 : 0;
+        } else if (val.isNumber()) {
+            packType(arena, BinaryType::Number);
+            double num = val.getNumber();
+            uint8_t* ptr = static_cast<uint8_t*>(arena.allocate(sizeof(double)));
+            std::memcpy(ptr, &num, sizeof(double));
+        } else if (val.isString()) {
+            packType(arena, BinaryType::String);
+            std::string str = val.getString(rt).utf8(rt);
+            uint32_t len = static_cast<uint32_t>(str.length());
             uint8_t* len_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
             std::memcpy(len_ptr, &len, sizeof(uint32_t));
-            
-            for (size_t i = 0; i < len; ++i) {
-                serialize(rt, arr.getValueAtIndex(rt, i), arena);
+            uint8_t* str_ptr = static_cast<uint8_t*>(arena.allocate(len));
+            std::memcpy(str_ptr, str.data(), len);
+        } else if (val.isObject()) {
+            facebook::jsi::Object obj = val.getObject(rt);
+            if (obj.isArray(rt)) {
+                packType(arena, BinaryType::Array);
+                facebook::jsi::Array arr = obj.getArray(rt);
+                uint32_t len = static_cast<uint32_t>(arr.size(rt));
+                
+                uint8_t* len_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
+                std::memcpy(len_ptr, &len, sizeof(uint32_t));
+                
+                for (size_t i = 0; i < len; ++i) {
+                    serialize(rt, arr.getValueAtIndex(rt, i), arena);
+                }
+            } else {
+                packType(arena, BinaryType::Object);
+                facebook::jsi::Array keys = obj.getPropertyNames(rt);
+                uint32_t len = static_cast<uint32_t>(keys.size(rt));
+                
+                uint8_t* len_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
+                std::memcpy(len_ptr, &len, sizeof(uint32_t));
+                
+                for (size_t i = 0; i < len; ++i) {
+                    facebook::jsi::Value keyVal = keys.getValueAtIndex(rt, i);
+                    std::string keyStr;
+                    if (keyVal.isString()) {
+                        keyStr = keyVal.getString(rt).utf8(rt);
+                    } else {
+                        keyStr = keyVal.toString(rt).utf8(rt);
+                    }
+                    
+                    uint32_t keyLen = static_cast<uint32_t>(keyStr.length());
+                    uint8_t* klen_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
+                    std::memcpy(klen_ptr, &keyLen, sizeof(uint32_t));
+                    uint8_t* kstr_ptr = static_cast<uint8_t*>(arena.allocate(keyLen));
+                    std::memcpy(kstr_ptr, keyStr.data(), keyLen);
+                    
+                    serialize(rt, obj.getProperty(rt, keyStr.c_str()), arena);
+                }
             }
         } else {
-            packType(arena, BinaryType::Object);
-            facebook::jsi::Array keys = obj.getPropertyNames(rt);
-            uint32_t len = static_cast<uint32_t>(keys.size(rt));
-            
-            uint8_t* len_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
-            std::memcpy(len_ptr, &len, sizeof(uint32_t));
-            
-            for (size_t i = 0; i < len; ++i) {
-                facebook::jsi::String jsiKey = keys.getValueAtIndex(rt, i).getString(rt);
-                std::string keyStr = jsiKey.utf8(rt);
-                
-                uint32_t keyLen = static_cast<uint32_t>(keyStr.length());
-                uint8_t* klen_ptr = static_cast<uint8_t*>(arena.allocate(sizeof(uint32_t)));
-                std::memcpy(klen_ptr, &keyLen, sizeof(uint32_t));
-                uint8_t* kstr_ptr = static_cast<uint8_t*>(arena.allocate(keyLen));
-                std::memcpy(kstr_ptr, keyStr.data(), keyLen);
-                
-                serialize(rt, obj.getProperty(rt, jsiKey), arena);
-            }
+            // Fallback for types like Symbol, BigInt (if not handled), or Functions
+            packType(arena, BinaryType::Null);
         }
-    } else {
+    } catch (...) {
+        // Safe fallback to Null on any serialization error to prevent crash
         packType(arena, BinaryType::Null);
     }
 }
