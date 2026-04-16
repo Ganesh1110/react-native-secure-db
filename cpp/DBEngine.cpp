@@ -1,5 +1,7 @@
 #include "DBEngine.h"
 #include "WALManager.h"
+#include "CachedCryptoContext.h"
+#include "LazyRecordProxy.h"
 #include <iostream>
 #include <vector>
 #include <shared_mutex>
@@ -398,14 +400,19 @@ facebook::jsi::Value DBEngine::findRec(facebook::jsi::Runtime& runtime, const st
         
         std::string data_bytes = mmap_->read(offset + sizeof(uint32_t), payload_len);
         
-        std::vector<uint8_t> decrypted;
+        auto decrypted = std::make_shared<std::vector<uint8_t>>();
         if (crypto_) {
-            decrypted = crypto_->decrypt(reinterpret_cast<const uint8_t*>(data_bytes.data()), payload_len);
+            *decrypted = crypto_->decrypt(reinterpret_cast<const uint8_t*>(data_bytes.data()), payload_len);
         } else {
-            decrypted.assign(data_bytes.begin(), data_bytes.end());
+            decrypted->assign(data_bytes.begin(), data_bytes.end());
         }
         
-        auto [val, consumed] = BinarySerializer::deserialize(runtime, decrypted.data(), decrypted.size());
+        if (!decrypted->empty() && static_cast<BinaryType>((*decrypted)[0]) == BinaryType::Object) {
+            auto proxy = std::make_shared<LazyRecordProxy>(std::move(decrypted));
+            return facebook::jsi::Object::createFromHostObject(runtime, proxy);
+        }
+
+        auto [val, consumed] = BinarySerializer::deserialize(runtime, decrypted->data(), decrypted->size());
         
         return std::move(val);
     } catch (const std::exception& e) {
@@ -443,7 +450,12 @@ void installDBEngine(facebook::jsi::Runtime& runtime, std::unique_ptr<SecureCryp
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "SecureDB", "installDBEngine: creating HostObject");
 #endif
-    auto dbEngine = std::make_shared<DBEngine>(std::move(crypto));
+    std::unique_ptr<SecureCryptoContext> final_crypto = nullptr;
+    if (crypto) {
+        final_crypto = std::make_unique<CachedCryptoContext>(std::move(crypto));
+    }
+    
+    auto dbEngine = std::make_shared<DBEngine>(std::move(final_crypto));
     runtime.global().setProperty(
         runtime,
         "NativeDB",
@@ -516,8 +528,26 @@ std::vector<std::pair<std::string, facebook::jsi::Value>> DBEngine::rangeQuery(
     auto rangeResults = btree_->range(startKey, endKey);
     for (const auto& [key, offset] : rangeResults) {
         if (offset > 0) {
-            auto value = findRec(runtime, key);
-            results.emplace_back(key, std::move(value));
+            std::string len_bytes = mmap_->read(offset, sizeof(uint32_t));
+            uint32_t payload_len;
+            std::memcpy(&payload_len, len_bytes.data(), sizeof(uint32_t));
+            
+            std::string data_bytes = mmap_->read(offset + sizeof(uint32_t), payload_len);
+            
+            auto decrypted = std::make_shared<std::vector<uint8_t>>();
+            if (crypto_) {
+                *decrypted = crypto_->decrypt(reinterpret_cast<const uint8_t*>(data_bytes.data()), payload_len);
+            } else {
+                decrypted->assign(data_bytes.begin(), data_bytes.end());
+            }
+
+            if (!decrypted->empty() && static_cast<BinaryType>((*decrypted)[0]) == BinaryType::Object) {
+                auto proxy = std::make_shared<LazyRecordProxy>(std::move(decrypted));
+                results.emplace_back(key, facebook::jsi::Object::createFromHostObject(runtime, proxy));
+            } else {
+                auto [val, consumed] = BinarySerializer::deserialize(runtime, decrypted->data(), decrypted->size());
+                results.emplace_back(key, std::move(val));
+            }
         }
     }
     

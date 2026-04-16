@@ -40,6 +40,12 @@ public:
      */
     std::vector<uint8_t> decrypt(const uint8_t* ciphertext, size_t length) override;
 
+    void encryptInto(const uint8_t* plaintext, size_t length, 
+                     uint8_t* out_buffer, size_t& out_length) override;
+    
+    bool decryptInto(const uint8_t* ciphertext, size_t length,
+                     uint8_t* out_buffer, size_t& out_length) override;
+
 private:
     static void ensureInitialized();
     

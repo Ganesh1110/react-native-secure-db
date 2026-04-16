@@ -15,6 +15,8 @@
 
 namespace secure_db {
 
+class LazyRecordProxy;
+
 class DBEngine : public facebook::jsi::HostObject {
 public:
     explicit DBEngine(std::unique_ptr<SecureCryptoContext> crypto = nullptr);

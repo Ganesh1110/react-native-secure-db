@@ -96,4 +96,55 @@ std::vector<uint8_t> SodiumCryptoContext::decrypt(const uint8_t* ciphertext_with
     return plaintext;
 }
 
+void SodiumCryptoContext::encryptInto(const uint8_t* plaintext, size_t length, 
+                                      uint8_t* out_buffer, size_t& out_length) {
+    std::lock_guard<std::mutex> lock(key_mutex_);
+    if (!key_is_set_) throw std::runtime_error("SodiumCryptoContext: Master key not initialized");
+
+    uint8_t nonce[crypto_aead_xchacha20poly1305_ietf_NPUBBYTES];
+    randombytes_buf(nonce, sizeof(nonce));
+
+    std::memcpy(out_buffer, nonce, sizeof(nonce));
+
+    unsigned long long actual_cipher_len;
+    int status = crypto_aead_xchacha20poly1305_ietf_encrypt(
+        out_buffer + sizeof(nonce), &actual_cipher_len,
+        plaintext, length,
+        nullptr, 0,
+        nullptr, nonce, master_key_
+    );
+
+    if (status != 0) throw std::runtime_error("SodiumCryptoContext: Encryption failed");
+    
+    out_length = sizeof(nonce) + actual_cipher_len;
+}
+
+bool SodiumCryptoContext::decryptInto(const uint8_t* ciphertext_with_nonce, size_t length,
+                                      uint8_t* out_buffer, size_t& out_length) {
+    std::lock_guard<std::mutex> lock(key_mutex_);
+    if (!key_is_set_) return false;
+
+    if (length < crypto_aead_xchacha20poly1305_ietf_NPUBBYTES + crypto_aead_xchacha20poly1305_ietf_ABYTES) {
+        return false;
+    }
+
+    const uint8_t* nonce = ciphertext_with_nonce;
+    const uint8_t* actual_ciphertext = ciphertext_with_nonce + crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
+    size_t actual_cipher_len = length - crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
+
+    unsigned long long actual_plain_len;
+    int status = crypto_aead_xchacha20poly1305_ietf_decrypt(
+        out_buffer, &actual_plain_len,
+        nullptr,
+        actual_ciphertext, actual_cipher_len,
+        nullptr, 0,
+        nonce, master_key_
+    );
+
+    if (status != 0) return false;
+
+    out_length = actual_plain_len;
+    return true;
+}
+
 } // namespace secure_db

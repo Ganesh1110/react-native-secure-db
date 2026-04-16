@@ -19,6 +19,12 @@ public:
     // Reverses a ciphertext payload extracted from the database natively 
     // returning the pure binary string.
     virtual std::vector<uint8_t> decrypt(const uint8_t* ciphertext, size_t length) = 0;
+
+    // NEW: Zero-copy output via provided buffer
+    virtual void encryptInto(const uint8_t* plaintext, size_t length, 
+                             uint8_t* out_buffer, size_t& out_length) = 0;
+    virtual bool decryptInto(const uint8_t* ciphertext, size_t length,
+                             uint8_t* out_buffer, size_t& out_length) = 0;
 };
 
 }

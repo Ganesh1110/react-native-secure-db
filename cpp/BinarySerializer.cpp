@@ -153,4 +153,53 @@ std::pair<facebook::jsi::Value, size_t> BinarySerializer::deserialize(facebook::
     }
 }
 
+size_t BinarySerializer::getBinarySize(const uint8_t* ptr, size_t remaining_size) {
+    if (remaining_size < 1) return 0;
+    size_t consumed = 1;
+    BinaryType type = static_cast<BinaryType>(ptr[0]);
+    
+    switch (type) {
+        case BinaryType::Null:
+            return consumed;
+        case BinaryType::Boolean:
+            return consumed + 1;
+        case BinaryType::Number:
+            return consumed + sizeof(double);
+        case BinaryType::String: {
+            if (remaining_size < consumed + sizeof(uint32_t)) return remaining_size;
+            uint32_t len;
+            std::memcpy(&len, ptr + consumed, sizeof(uint32_t));
+            return consumed + sizeof(uint32_t) + len;
+        }
+        case BinaryType::Array: {
+            if (remaining_size < consumed + sizeof(uint32_t)) return remaining_size;
+            uint32_t len;
+            std::memcpy(&len, ptr + consumed, sizeof(uint32_t));
+            consumed += sizeof(uint32_t);
+            for (size_t i = 0; i < len; ++i) {
+                consumed += getBinarySize(ptr + consumed, remaining_size - consumed);
+            }
+            return consumed;
+        }
+        case BinaryType::Object: {
+            if (remaining_size < consumed + sizeof(uint32_t)) return remaining_size;
+            uint32_t len;
+            std::memcpy(&len, ptr + consumed, sizeof(uint32_t));
+            consumed += sizeof(uint32_t);
+            for (size_t i = 0; i < len; ++i) {
+                // Skip key
+                if (remaining_size < consumed + sizeof(uint32_t)) return remaining_size;
+                uint32_t keyLen;
+                std::memcpy(&keyLen, ptr + consumed, sizeof(uint32_t));
+                consumed += sizeof(uint32_t) + keyLen;
+                // Skip value
+                consumed += getBinarySize(ptr + consumed, remaining_size - consumed);
+            }
+            return consumed;
+        }
+        default:
+            return remaining_size;
+    }
+}
+
 }

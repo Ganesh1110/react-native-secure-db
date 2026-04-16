@@ -18,6 +18,8 @@ add_library(
     ../cpp/PersistentBPlusTree.cpp
     ../cpp/WALManager.cpp
     ../cpp/SodiumCryptoContext.cpp
+    ../cpp/CachedCryptoContext.cpp
+    ../cpp/LazyRecordProxy.cpp
 )
 
 set_target_properties(

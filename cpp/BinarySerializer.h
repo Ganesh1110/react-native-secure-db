@@ -23,6 +23,9 @@ public:
     // Reconstructs a deeply-nested JSI value from raw memory
     // Returns the fully constructed Value and the exact number of bytes it consumed.
     static std::pair<facebook::jsi::Value, size_t> deserialize(facebook::jsi::Runtime& rt, const uint8_t* ptr, size_t remaining_size);
+
+    // Calculate size of binary data at ptr without full deserialization
+    static size_t getBinarySize(const uint8_t* ptr, size_t remaining_size);
 };
 
 }
