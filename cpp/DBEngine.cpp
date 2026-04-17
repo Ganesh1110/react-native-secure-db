@@ -624,29 +624,44 @@ std::string DBEngine::read(size_t offset, size_t length) {
 }
 
 facebook::jsi::Value DBEngine::insertRec(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj) {
+    #ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRec: called with key=%s", key.c_str());
+    #endif
     std::shared_lock lock(rw_mutex_);
     if (!btree_ || !mmap_) {
-        std::cerr << "TurboDB insertRec: btree or mmap is null" << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRec: btree or mmap is null");
+        #endif
         return facebook::jsi::Value(false);
     }
-    std::cerr << "TurboDB insertRec: calling insertRecInternal for key=" << key << std::endl;
+    #ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRec: calling insertRecInternal");
+    #endif
     return this->insertRecInternal(runtime, key, obj, true);
 }
 
 facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj, bool shouldCommit) {
-    std::cerr << "TurboDB insertRecInternal: start for key=" << key << std::endl;
+    #ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: start key=%s", key.c_str());
+    #endif
     if (!btree_ || !mmap_) {
-        std::cerr << "TurboDB insertRecInternal: btree or mmap is null" << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRecInternal: btree or mmap is null");
+        #endif
         return facebook::jsi::Value(false);
     }
     
     try {
-        std::cerr << "TurboDB insertRecInternal: serializing..." << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: serializing...");
+        #endif
         // Step 1: Use reusable ArenaAllocator avoiding std::bad_alloc/new leakages
         arena_.reset();
         BinarySerializer::serialize(runtime, obj, arena_);
         
-        std::cerr << "TurboDB insertRecInternal: serialized, size=" << arena_.size() << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: serialized, size=%zu", arena_.size());
+        #endif
         
         // Step 2: Grab sequential offset and encrypt directly into arena
         size_t offset = next_free_offset_;
@@ -686,7 +701,9 @@ facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime
         next_free_offset_ += sizeof(uint32_t) + payload_len + (is_secure_mode_ ? sizeof(uint32_t) : 0);
         if (pbtree_) pbtree_->setNextFreeOffset(next_free_offset_);
         
-        std::cerr << "TurboDB insertRecInternal: writing to btree..." << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: writing to btree...");
+        #endif
         // Step 4: Trigger the zero-latency queued background logic
         btree_->insert(key, offset);
 
@@ -695,13 +712,19 @@ facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime
             wal_->sync();
         }
         
-        std::cerr << "TurboDB insertRecInternal: success!" << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: success!");
+        #endif
         return facebook::jsi::Value(true);
     } catch (const std::exception& e) {
-        std::cerr << "TurboDB insertRec error: " << e.what() << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRec error: %s", e.what());
+        #endif
         return facebook::jsi::Value(false);
     } catch (...) {
-        std::cerr << "TurboDB insertRec unknown error" << std::endl;
+        #ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRec unknown error");
+        #endif
         return facebook::jsi::Value(false);
     }
 }
