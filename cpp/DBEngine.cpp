@@ -624,46 +624,21 @@ std::string DBEngine::read(size_t offset, size_t length) {
 }
 
 facebook::jsi::Value DBEngine::insertRec(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj) {
-    #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRec: called with key=%s", key.c_str());
-    #endif
-    
-    // Simplified version - skip complex locking for now to debug
     if (!btree_ || !mmap_) {
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRec: btree or mmap is null");
-        #endif
         return facebook::jsi::Value(false);
     }
-    
-    #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRec: calling insertRecInternal (no lock)");
-    #endif
     return this->insertRecInternal(runtime, key, obj, true);
 }
 
 facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj, bool shouldCommit) {
-    #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: start key=%s", key.c_str());
-    #endif
     if (!btree_ || !mmap_) {
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRecInternal: btree or mmap is null");
-        #endif
         return facebook::jsi::Value(false);
     }
     
     try {
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: serializing...");
-        #endif
         // Step 1: Use reusable ArenaAllocator avoiding std::bad_alloc/new leakages
         arena_.reset();
         BinarySerializer::serialize(runtime, obj, arena_);
-        
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: serialized, size=%zu", arena_.size());
-        #endif
         
         // Step 2: Grab sequential offset and encrypt directly into arena
         size_t offset = next_free_offset_;
@@ -703,9 +678,6 @@ facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime
         next_free_offset_ += sizeof(uint32_t) + payload_len + (is_secure_mode_ ? sizeof(uint32_t) : 0);
         if (pbtree_) pbtree_->setNextFreeOffset(next_free_offset_);
         
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: writing to btree...");
-        #endif
         // Step 4: Trigger the zero-latency queued background logic
         btree_->insert(key, offset);
 
@@ -714,19 +686,10 @@ facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime
             wal_->sync();
         }
         
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "insertRecInternal: success!");
-        #endif
         return facebook::jsi::Value(true);
     } catch (const std::exception& e) {
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRec error: %s", e.what());
-        #endif
         return facebook::jsi::Value(false);
     } catch (...) {
-        #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "insertRec unknown error");
-        #endif
         return facebook::jsi::Value(false);
     }
 }
