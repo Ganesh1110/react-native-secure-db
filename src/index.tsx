@@ -138,8 +138,10 @@ export class TurboDB {
 
   set(key: string, value: any): boolean {
     this.ensureInitialized();
-    console.log('TurboDB.set:', key, 'value:', typeof value);
-    return global.NativeDB.insertRec(key, value);
+    console.log('TurboDB.set: calling insertRec');
+    const result = global.NativeDB.insertRec(key, value);
+    console.log('TurboDB.set: insertRec returned', result);
+    return result;
   }
 
   get<T = any>(key: string): T | undefined {

@@ -626,23 +626,27 @@ std::string DBEngine::read(size_t offset, size_t length) {
 facebook::jsi::Value DBEngine::insertRec(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj) {
     std::shared_lock lock(rw_mutex_);
     if (!btree_ || !mmap_) {
-        LOGE("insertRec: btree or mmap is null");
+        std::cerr << "TurboDB insertRec: btree or mmap is null" << std::endl;
         return facebook::jsi::Value(false);
     }
+    std::cerr << "TurboDB insertRec: calling insertRecInternal for key=" << key << std::endl;
     return this->insertRecInternal(runtime, key, obj, true);
 }
 
 facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime, const std::string& key, const facebook::jsi::Value& obj, bool shouldCommit) {
+    std::cerr << "TurboDB insertRecInternal: start for key=" << key << std::endl;
     if (!btree_ || !mmap_) {
-        LOGE("insertRecInternal: btree or mmap is null");
+        std::cerr << "TurboDB insertRecInternal: btree or mmap is null" << std::endl;
         return facebook::jsi::Value(false);
     }
     
     try {
-        LOGI("insertRecInternal: key=%s", key.c_str());
+        std::cerr << "TurboDB insertRecInternal: serializing..." << std::endl;
         // Step 1: Use reusable ArenaAllocator avoiding std::bad_alloc/new leakages
         arena_.reset();
         BinarySerializer::serialize(runtime, obj, arena_);
+        
+        std::cerr << "TurboDB insertRecInternal: serialized, size=" << arena_.size() << std::endl;
         
         // Step 2: Grab sequential offset and encrypt directly into arena
         size_t offset = next_free_offset_;
@@ -682,6 +686,7 @@ facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime
         next_free_offset_ += sizeof(uint32_t) + payload_len + (is_secure_mode_ ? sizeof(uint32_t) : 0);
         if (pbtree_) pbtree_->setNextFreeOffset(next_free_offset_);
         
+        std::cerr << "TurboDB insertRecInternal: writing to btree..." << std::endl;
         // Step 4: Trigger the zero-latency queued background logic
         btree_->insert(key, offset);
 
@@ -690,13 +695,13 @@ facebook::jsi::Value DBEngine::insertRecInternal(facebook::jsi::Runtime& runtime
             wal_->sync();
         }
         
-        LOGI("insertRecInternal: success for key=%s", key.c_str());
+        std::cerr << "TurboDB insertRecInternal: success!" << std::endl;
         return facebook::jsi::Value(true);
     } catch (const std::exception& e) {
-        LOGE("insertRec error: %s", e.what());
+        std::cerr << "TurboDB insertRec error: " << e.what() << std::endl;
         return facebook::jsi::Value(false);
     } catch (...) {
-        LOGE("insertRec unknown error");
+        std::cerr << "TurboDB insertRec unknown error" << std::endl;
         return facebook::jsi::Value(false);
     }
 }
