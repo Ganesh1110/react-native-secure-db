@@ -96,6 +96,7 @@ private:
 
     void setSecureMode(bool enable);
     bool repair();
+    bool repairInternal();
     bool verifyHealth();
     std::string getDatabasePath() const;
     std::string getWALPath() const;

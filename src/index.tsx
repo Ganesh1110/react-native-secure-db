@@ -86,7 +86,9 @@ export class SecureDB {
           break;
         }
         // Small delay if not found immediately (for New Arch async behavior)
-        // Note: blocking in JSI is not ideal but this is initialization
+        // We use a busy-wait since this is synchronous initialization
+        const start = Date.now();
+        while (Date.now() - start < 10) {}
       }
 
       if (typeof global.NativeDB === 'undefined') {

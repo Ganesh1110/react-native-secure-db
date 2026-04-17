@@ -482,18 +482,25 @@ bool DBEngine::verifyHealth() {
 
 bool DBEngine::repair() {
     if (!mmap_) return false;
-
     std::unique_lock lock(rw_mutex_);
+    return repairInternal();
+}
 
+bool DBEngine::repairInternal() {
+    // Note: Caller must hold rw_mutex_ with unique_lock
     std::string db_path = mmap_->getPath();
     std::string corrupt_path = db_path + ".corrupt.bak";
 
     try {
+        LOGI("repairInternal: starting repair for %s", db_path.c_str());
         // Step 1: Close current mappings
-        mmap_->close();
         if (btree_) btree_.reset();
         if (pbtree_) pbtree_.reset();
         if (wal_) wal_.reset();
+        if (mmap_) {
+            mmap_->close();
+            mmap_.reset();
+        }
 
         // Step 2: Archive corrupted file
         std::rename(db_path.c_str(), corrupt_path.c_str());
@@ -509,13 +516,9 @@ bool DBEngine::repair() {
         mmap_ = std::make_unique<MMapRegion>();
         mmap_->init(db_path, 10 * 1024 * 1024);
 
-        if (is_secure_mode_) {
-            wal_ = std::make_unique<WALManager>(db_path, crypto_.get());
-        }
-
+        wal_ = std::make_unique<WALManager>(db_path, crypto_.get());
         pbtree_ = std::make_unique<PersistentBPlusTree>(mmap_.get(), wal_.get());
         pbtree_->init();
-
         btree_ = std::make_unique<BufferedBTree>(pbtree_.get());
 
         LOGI("Database repair complete");
@@ -571,7 +574,7 @@ bool DBEngine::initStorage(const std::string& path, size_t size) {
         if (!verifyHealth()) {
             LOGE("Health check failed, triggering repair");
             needs_repair_ = true;
-            return repair();
+            return repairInternal();
         }
 
         // Run WAL recovery (secure mode only)
@@ -591,7 +594,7 @@ bool DBEngine::initStorage(const std::string& path, size_t size) {
     } catch(const std::exception& e) {
         LOGE("initStorage exception: %s, triggering repair", e.what());
         needs_repair_ = true;
-        return repair();
+        return repairInternal();
     }
 }
 
