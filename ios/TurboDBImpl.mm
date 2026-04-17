@@ -1,5 +1,6 @@
 #include "TurboDBImpl.h"
 #include "DBEngine.h"
+#include "SodiumCryptoContext.h"
 
 #if __has_include(<TurboDBSpecJSI.h>)
 #include <TurboDBSpecJSI.h>
@@ -24,11 +25,10 @@ void TurboDBImpl::install(jsi::Runtime& rt) {
 #ifdef __APPLE__
     std::string docsDir = getDocumentsDirectory(rt);
     
-    // For iOS, we use the shared KeyManager
-    auto& keyManager = turbo_db::KeyManagerIOS::getInstance();
-    std::vector<uint8_t> masterKey = keyManager.getMasterKey("TurboDBMasterKey");
+    auto masterKey = turbo_db::KeyManagerIOS::getOrGenerateMasterKey("TurboDBMasterKey");
     
-    auto crypto = std::make_unique<turbo_db::SodiumCryptoContext>(masterKey);
+    auto crypto = std::make_unique<turbo_db::SodiumCryptoContext>();
+    crypto->setMasterKey(masterKey);
     turbo_db::installDBEngine(rt, js_invoker, std::move(crypto));
 #endif
 }

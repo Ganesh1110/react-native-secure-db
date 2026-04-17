@@ -21,6 +21,9 @@ target 'TurboDBExample' do
   project 'TurboDBExample.xcodeproj'
   config = use_native_modules!
 
+  # TurboDB native module
+  pod 'TurboDB', :path => '../..'
+
   use_react_native!(
     :path => config[:reactNativePath],
     :app_path => "#{Pod::Config.instance.installation_root}/.."

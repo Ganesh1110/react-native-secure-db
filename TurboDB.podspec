@@ -16,6 +16,9 @@ Pod::Spec.new do |s|
   s.source_files = "ios/**/*.{h,m,mm}", "cpp/**/*.{hpp,cpp,c,h}"
   s.private_header_files = "ios/**/*.h"
 
+  # Exclude generated codegen files to prevent duplicate symbols
+  s.exclude_files = "ios/generated/**/*"
+
   s.dependency 'libsodium'
 
   # Folly config defines — FOLLY_HAS_COROUTINES=0 prevents 'folly/coro/Coroutine.h' not found
