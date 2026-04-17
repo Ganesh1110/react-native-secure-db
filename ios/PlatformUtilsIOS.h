@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace secure_db {
+namespace turbo_db {
 
 class PlatformUtilsIOS {
 public:

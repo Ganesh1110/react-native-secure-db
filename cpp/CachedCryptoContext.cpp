@@ -1,6 +1,6 @@
 #include "CachedCryptoContext.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 CachedCryptoContext::CachedCryptoContext(std::unique_ptr<SecureCryptoContext> inner, size_t cache_pages)
     : inner_(std::move(inner)), max_cache_pages_(cache_pages) {}
@@ -96,4 +96,4 @@ void CachedCryptoContext::invalidatePage(uint64_t record_offset) {
     }
 }
 
-} // namespace secure_db
+} // namespace turbo_db

@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include "SecureCryptoContext.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 class CorruptionException : public std::runtime_error {
 public:

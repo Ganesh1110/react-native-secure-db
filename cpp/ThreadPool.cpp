@@ -1,6 +1,6 @@
 #include "ThreadPool.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 ThreadPool::ThreadPool(size_t num_threads) : stop_(false), pending_tasks_(0) {
     workers_.reserve(num_threads);

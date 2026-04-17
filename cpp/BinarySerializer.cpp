@@ -2,7 +2,7 @@
 #include <cstring>
 #include <stdexcept>
 
-namespace secure_db {
+namespace turbo_db {
 
 static void packType(ArenaAllocator& arena, BinaryType t) {
     uint8_t* ptr = static_cast<uint8_t*>(arena.allocate(1));

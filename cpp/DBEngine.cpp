@@ -8,7 +8,7 @@
 
 #ifdef __ANDROID__
 #include <android/log.h>
-#define LOG_TAG "SecureDB_Native"
+#define LOG_TAG "TurboDB_Native"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #else
@@ -53,7 +53,7 @@ public:
 
 } // namespace facebook::jsi
 
-namespace secure_db {
+namespace turbo_db {
 
 DBEngine::DBEngine(std::shared_ptr<facebook::react::CallInvoker> js_invoker, std::unique_ptr<SecureCryptoContext> crypto) 
     : start_time_(std::chrono::high_resolution_clock::now()),
@@ -70,7 +70,7 @@ facebook::jsi::Value DBEngine::get(
     std::string propName = name.utf8(runtime);
     
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "SecureDB", "getProperty called for: '%s'", propName.c_str());
+    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "getProperty called for: '%s'", propName.c_str());
 #endif
     
     if (propName == "add") {
@@ -217,7 +217,7 @@ facebook::jsi::Value DBEngine::get(
     
     if (propName == "remove") {
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "SecureDB", "getProperty: 'remove' handler");
+        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "getProperty: 'remove' handler");
 #endif
         return facebook::jsi::Function::createFromHostFunction(
             runtime, name, 1,
@@ -232,19 +232,19 @@ facebook::jsi::Value DBEngine::get(
     
     if (propName == "del") {
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "SecureDB", "getProperty: 'del' handler");
+        __android_log_print(ANDROID_LOG_INFO, "TurboDB", "getProperty: 'del' handler");
 #endif
         return facebook::jsi::Function::createFromHostFunction(
             runtime, name, 1,
             [this](facebook::jsi::Runtime& runtime, const facebook::jsi::Value& thisValue, const facebook::jsi::Value* args, size_t count) -> facebook::jsi::Value {
 #ifdef __ANDROID__
-                __android_log_print(ANDROID_LOG_INFO, "SecureDB", "del called, count=%zu", count);
+                __android_log_print(ANDROID_LOG_INFO, "TurboDB", "del called, count=%zu", count);
 #endif
                 std::unique_lock lock(rw_mutex_);
                 std::string key = args[0].getString(runtime).utf8(runtime);
                 bool result = this->remove(key);
 #ifdef __ANDROID__
-                __android_log_print(ANDROID_LOG_INFO, "SecureDB", "del result=%d", result);
+                __android_log_print(ANDROID_LOG_INFO, "TurboDB", "del result=%d", result);
 #endif
                 return facebook::jsi::Value(result);
             }
@@ -271,17 +271,32 @@ facebook::jsi::Value DBEngine::get(
         );
     }
     
+    if (propName == "getAllKeysPaged") {
+        return facebook::jsi::Function::createFromHostFunction(
+            runtime, name, 2,
+            [this](facebook::jsi::Runtime& runtime, const facebook::jsi::Value& thisValue, const facebook::jsi::Value* args, size_t count) -> facebook::jsi::Value {
+                int limit = count > 0 ? (int)args[0].asNumber() : 100;
+                int offset = count > 1 ? (int)args[1].asNumber() : 0;
+                auto keys = this->getAllKeysPaged(limit, offset);
+                facebook::jsi::Array result(runtime, keys.size());
+                for (size_t i = 0; i < keys.size(); ++i) {
+                    result.setValueAtIndex(runtime, i, facebook::jsi::String::createFromUtf8(runtime, keys[i]));
+                }
+                return result;
+            }
+        );
+    }
+
     if (propName == "getAllKeys") {
         return facebook::jsi::Function::createFromHostFunction(
             runtime, name, 0,
             [this](facebook::jsi::Runtime& runtime, const facebook::jsi::Value& thisValue, const facebook::jsi::Value* args, size_t count) -> facebook::jsi::Value {
-                std::shared_lock lock(rw_mutex_);
                 auto keys = this->getAllKeys();
-                auto arr = facebook::jsi::Array(runtime, keys.size());
-                for (size_t i = 0; i < keys.size(); i++) {
-                    arr.setValueAtIndex(runtime, i, facebook::jsi::String::createFromUtf8(runtime, keys[i]));
+                facebook::jsi::Array result(runtime, keys.size());
+                for (size_t i = 0; i < keys.size(); ++i) {
+                    result.setValueAtIndex(runtime, i, facebook::jsi::String::createFromUtf8(runtime, keys[i]));
                 }
-                return arr;
+                return result;
             }
         );
     }
@@ -410,12 +425,9 @@ std::vector<facebook::jsi::PropNameID> DBEngine::getPropertyNames(facebook::jsi:
     names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "del"));
     names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "rangeQuery"));
     names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "getAllKeys"));
-    names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "deleteAll"));
-    names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "flush"));
-    names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "setMultiAsync"));
-    names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "getMultipleAsync"));
-    names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "rangeQueryAsync"));
+    names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "getAllKeysPaged"));
     names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "getAllKeysAsync"));
+    names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "getMultipleAsync"));
     names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "getDatabasePath"));
     names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "getWALPath"));
     names.push_back(facebook::jsi::PropNameID::forAscii(runtime, "verifyHealth"));
@@ -756,9 +768,9 @@ facebook::jsi::Value DBEngine::findRec(facebook::jsi::Runtime& runtime, const st
         return facebook::jsi::Value::undefined();
     } catch (const std::exception& e) {
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_ERROR, "SecureDB", "findRec error: %s", e.what());
+        __android_log_print(ANDROID_LOG_ERROR, "TurboDB", "findRec error: %s", e.what());
 #endif
-        std::cerr << "SecureDB findRec error: " << e.what() << "\n";
+        std::cerr << "TurboDB findRec error: " << e.what() << "\n";
         return facebook::jsi::Value::undefined();
     }
 }
@@ -803,7 +815,7 @@ void installDBEngine(facebook::jsi::Runtime& runtime, std::shared_ptr<facebook::
         return;
     }
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "SecureDB", "installDBEngine: creating HostObject");
+    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "installDBEngine: creating HostObject");
 #endif
     std::unique_ptr<SecureCryptoContext> final_crypto = nullptr;
     if (crypto) {
@@ -817,7 +829,7 @@ void installDBEngine(facebook::jsi::Runtime& runtime, std::shared_ptr<facebook::
         facebook::jsi::Object::createFromHostObject(runtime, dbEngine)
     );
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "SecureDB", "installDBEngine: NativeDB set on global");
+    __android_log_print(ANDROID_LOG_INFO, "TurboDB", "installDBEngine: NativeDB set on global");
 #endif
 }
 
@@ -995,8 +1007,22 @@ std::vector<std::pair<std::string, facebook::jsi::Value>> DBEngine::rangeQuery(
 }
 
 std::vector<std::string> DBEngine::getAllKeys() {
+    std::shared_lock lock(rw_mutex_);
     if (!btree_) return {};
     return btree_->getAllKeys();
+}
+
+std::vector<std::string> DBEngine::getAllKeysPaged(int limit, int offset) {
+    std::shared_lock lock(rw_mutex_);
+    if (!btree_) return {};
+    
+    auto allKeys = btree_->getAllKeys();
+    if (offset >= allKeys.size()) return {};
+    
+    auto start = allKeys.begin() + offset;
+    auto end = (offset + limit < allKeys.size()) ? (start + limit) : allKeys.end();
+    
+    return std::vector<std::string>(start, end);
 }
 
 bool DBEngine::deleteAll() {

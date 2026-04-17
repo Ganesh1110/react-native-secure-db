@@ -1,15 +1,15 @@
-# React Native Secure DB - Technical Analysis Report
+# React Native TurboDB - Technical Analysis Report
 
-> A comprehensive technical audit, competitive analysis, and feature specification for the custom React Native secure database plugin.
+> A comprehensive technical audit, competitive analysis, and feature specification for the custom React Native TurboDB database plugin.
 
 ---
 
 ## Architecture Overview
 
-This plugin is a **JSI-driven secure embedded database** for React Native with the following core architecture:
+This plugin is a **JSI-driven TurboDB embedded database** for React Native with the following core architecture:
 
 ```
-react-native-secure-db/
+react-native-turbo-db/
 ├── cpp/                    # Core C++ database engine
 ├── ios/                    # iOS native implementation + TurboModule codegen
 ├── android/                # Android native implementation + JNI
@@ -306,4 +306,4 @@ example/
 | **Encryption**  | `cpp/SodiumCryptoContext.cpp` | XChaCha20-Poly1305               |
 | **Encryption**  | `cpp/CachedCryptoContext.cpp` | LRU decryption cache             |
 | **WAL**         | `cpp/WALManager.cpp`          | Write-ahead log + recovery       |
-| **JS API**      | `src/index.tsx`               | TypeScript SecureDB class        |
+| **JS API**      | `src/index.tsx`               | TypeScript TurboDB class         |

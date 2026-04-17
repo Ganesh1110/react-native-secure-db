@@ -8,7 +8,7 @@
 #include <atomic>
 #include <vector>
 
-namespace secure_db {
+namespace turbo_db {
 
 class ThreadPool {
 public:

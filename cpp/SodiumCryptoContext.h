@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <mutex>
 
-namespace secure_db {
+namespace turbo_db {
 
 /**
  * @brief Unified Crypto Context using Libsodium XChaCha20-Poly1305.
@@ -54,4 +54,4 @@ private:
     mutable std::mutex key_mutex_;
 };
 
-} // namespace secure_db
+} // namespace turbo_db

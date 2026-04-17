@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include "BinarySerializer.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 class LazyRecordProxy : public facebook::jsi::HostObject {
 public:
@@ -27,4 +27,4 @@ private:
     facebook::jsi::Value parseProperty(facebook::jsi::Runtime& runtime, const std::string& key);
 };
 
-} // namespace secure_db
+} // namespace turbo_db

@@ -7,4 +7,4 @@ export interface Spec extends TurboModule {
   getVersion(): string;
 }
 
-export default TurboModuleRegistry.getEnforcing<Spec>('SecureDB');
+export default TurboModuleRegistry.getEnforcing<Spec>('TurboDB');

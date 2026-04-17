@@ -1,6 +1,6 @@
 #include "LazyRecordProxy.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 LazyRecordProxy::LazyRecordProxy(std::shared_ptr<std::vector<uint8_t>> binary_data)
     : binary_data_(std::move(binary_data)) {}
@@ -89,4 +89,4 @@ facebook::jsi::Value LazyRecordProxy::parseProperty(facebook::jsi::Runtime& runt
     return facebook::jsi::Value::undefined();
 }
 
-} // namespace secure_db
+} // namespace turbo_db

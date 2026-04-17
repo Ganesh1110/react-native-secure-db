@@ -4,10 +4,10 @@
 #include <stdexcept>
 #include "CommonCrypto/CommonRandom.h"
 
-namespace secure_db {
+namespace turbo_db {
 
-static NSString* kWrappedKeyTag = @"com.securedb.wrappedkey";
-static NSString* kSecureEnclaveTag = @"com.securedb.enclave.key";
+static NSString* kWrappedKeyTag = @"com.turbodb.wrappedkey";
+static NSString* kSecureEnclaveTag = @"com.turbodb.enclave.key";
 
 static std::vector<uint8_t> secDataToVector(CFDataRef data) {
     if (!data) return {};
@@ -156,7 +156,7 @@ std::vector<uint8_t> KeyManagerIOS::getOrGenerateMasterKey(const std::string& al
 
         NSDictionary *query = @{
             (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-            (__bridge id)kSecAttrService: @"SecureDB",
+            (__bridge id)kSecAttrService: @"TurboDB",
             (__bridge id)kSecAttrAccount: nsAlias,
             (__bridge id)kSecReturnData: @YES,
             (__bridge id)kSecUseAuthenticationUI: (__bridge id)kSecUseAuthenticationUIAllow
@@ -194,7 +194,7 @@ std::vector<uint8_t> KeyManagerIOS::getOrGenerateMasterKey(const std::string& al
 
         NSDictionary *addQuery = @{
             (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-            (__bridge id)kSecAttrService: @"SecureDB",
+            (__bridge id)kSecAttrService: @"TurboDB",
             (__bridge id)kSecAttrAccount: nsAlias,
             (__bridge id)kSecValueData: [NSData dataWithBytes:wrapped.data() length:wrapped.size()],
             (__bridge id)kSecUseAuthenticationUI: (__bridge id)kSecUseAuthenticationUIAllow
@@ -219,7 +219,7 @@ bool KeyManagerIOS::deleteMasterKey(const std::string& alias) {
 
         NSDictionary *query = @{
             (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-            (__bridge id)kSecAttrService: @"SecureDB",
+            (__bridge id)kSecAttrService: @"TurboDB",
             (__bridge id)kSecAttrAccount: nsAlias
         };
 
@@ -228,4 +228,4 @@ bool KeyManagerIOS::deleteMasterKey(const std::string& alias) {
     }
 }
 
-} // namespace secure_db
+} // namespace turbo_db

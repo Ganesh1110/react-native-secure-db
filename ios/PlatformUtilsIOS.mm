@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #include "PlatformUtilsIOS.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 void PlatformUtilsIOS::applyStrictFileProtection(const std::string& filePath) {
     @autoreleasepool {
@@ -16,10 +16,10 @@ void PlatformUtilsIOS::applyStrictFileProtection(const std::string& filePath) {
             BOOL success = [fileManager setAttributes:attributes ofItemAtPath:path error:&error];
 
             if (!success) {
-                NSLog(@"[SecureDB] Failed to set FileProtectionComplete on %@: %@",
+                NSLog(@"[TurboDB] Failed to set FileProtectionComplete on %@: %@",
                       path, error.localizedDescription);
             } else {
-                NSLog(@"[SecureDB] FileProtectionComplete applied to %@", path);
+                NSLog(@"[TurboDB] FileProtectionComplete applied to %@", path);
             }
         }
     }
@@ -34,7 +34,7 @@ void PlatformUtilsIOS::applyStrictFileProtectionToDirectory(const std::string& d
         NSArray *contents = [fileManager contentsOfDirectoryAtPath:path error:&error];
 
         if (error) {
-            NSLog(@"[SecureDB] Failed to list directory contents: %@", error.localizedDescription);
+            NSLog(@"[TurboDB] Failed to list directory contents: %@", error.localizedDescription);
             return;
         }
 
@@ -45,4 +45,4 @@ void PlatformUtilsIOS::applyStrictFileProtectionToDirectory(const std::string& d
     }
 }
 
-} // namespace secure_db
+} // namespace turbo_db

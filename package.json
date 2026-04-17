@@ -1,7 +1,7 @@
 {
-  "name": "react-native-secure-db",
+  "name": "react-native-turbo-db",
   "version": "0.1.0",
-  "description": "Secure JSI-driven Embedded Database",
+  "description": "Secure JSI-driven embedded key-value database for React Native. High-performance encrypted storage with hardware-backed keys, ACID compliance, and SSR/isomorphic support. Fast AsyncStorage alternative.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -36,7 +36,7 @@
     "!**/.*"
   ],
   "scripts": {
-    "example": "yarn workspace react-native-secure-db-example",
+    "example": "yarn workspace react-native-turbo-db-example",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
@@ -49,18 +49,35 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "jsi",
+    "turbo-module",
+    "secure",
+    "database",
+    "encrypted",
+    "storage",
+    "key-value",
+    "performance",
+    "ssr",
+    "isomorphic",
+    "web",
+    "core-web-vitals",
+    "asyncstorage",
+    "encryption",
+    "aes-256",
+    "keychain",
+    "keystore"
   ],
   "repository": {
     "type": "git",
-    "url": "git+.git"
+    "url": "https://github.com/ganeshjayaprakash/react-native-turbo-db.git"
   },
-  "author": "Ganesh Jayaprakash <Ganesh.Jayaprakash@consultant.mannai.com.qa> ()",
+  "author": "Ganesh Jayaprakash <ganesh@example.com> (https://github.com/ganeshjayaprakash)",
   "license": "MIT",
   "bugs": {
-    "url": "/issues"
+    "url": "https://github.com/ganeshjayaprakash/react-native-turbo-db/issues"
   },
-  "homepage": "#readme",
+  "homepage": "https://github.com/ganeshjayaprakash/react-native-turbo-db#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -122,7 +139,7 @@
     ]
   },
   "codegenConfig": {
-    "name": "SecureDBSpec",
+    "name": "TurboDBSpec",
     "type": "modules",
     "jsSrcsDir": "src",
     "outputDir": {
@@ -130,7 +147,7 @@
       "android": "android/generated"
     },
     "android": {
-      "javaPackageName": "com.securedb"
+      "javaPackageName": "com.turbodb"
     },
     "includesGeneratedCode": false
   },

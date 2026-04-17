@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-namespace secure_db {
+namespace turbo_db {
 
 WALManager::WALManager(const std::string& db_path, SecureCryptoContext* crypto)
     : wal_path_(db_path + ".wal"), crypto_(crypto)

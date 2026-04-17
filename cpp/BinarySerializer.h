@@ -4,7 +4,7 @@
 #include <vector>
 #include "ArenaAllocator.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 enum class BinaryType : uint8_t {
     Null = 1,

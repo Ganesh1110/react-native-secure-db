@@ -2,7 +2,7 @@
 #include <cstring>
 #include <mutex>
 
-namespace secure_db {
+namespace turbo_db {
 
 void SodiumCryptoContext::ensureInitialized() {
     static std::once_flag init_flag;
@@ -147,4 +147,4 @@ bool SodiumCryptoContext::decryptInto(const uint8_t* ciphertext_with_nonce, size
     return true;
 }
 
-} // namespace secure_db
+} // namespace turbo_db

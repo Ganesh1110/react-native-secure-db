@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace secure_db {
+namespace turbo_db {
 
 // The abstract boundary that protects the raw MMap logic from platform-specific
 // hardware cryptography endpoints (like CommonCrypto or Java KeyStore JNI bindings).

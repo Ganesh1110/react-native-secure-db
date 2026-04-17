@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <functional>
 
-namespace secure_db {
+namespace turbo_db {
 
 struct FreeBlock {
     uint64_t next;

@@ -1,17 +1,24 @@
-package com.securedb;
+package com.turbodb;
 
-import com.facebook.fbreact.specs.NativeSecureDBSpec;
+import com.facebook.fbreact.specs.NativeTurboDBSpec;
 import com.facebook.react.bridge.ReactApplicationContext;
 import java.io.File;
 
-public class SecureDBModule extends NativeSecureDBSpec {
+public class TurboDBModule extends NativeTurboDBSpec {
+  public static final String NAME = "TurboDB";
+
   static {
-    System.loadLibrary("react-native-secure-db");
+    System.loadLibrary("react-native-turbo-db");
   }
 
-  public SecureDBModule(ReactApplicationContext reactContext) {
+  public TurboDBModule(ReactApplicationContext reactContext) {
     super(reactContext);
     KeyStoreManager.init(reactContext);
+  }
+
+  @Override
+  public String getName() {
+    return NAME;
   }
 
   @Override

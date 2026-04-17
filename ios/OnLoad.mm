@@ -1,20 +1,20 @@
 #import <Foundation/Foundation.h>
-#import "SecureDBImpl.h"
+#import "TurboDBImpl.h"
 #import <ReactCommon/CxxTurboModuleUtils.h>
 
-@interface SecureDBOnLoad : NSObject
+@interface TurboDBOnLoad : NSObject
 @end
 
-@implementation SecureDBOnLoad
+@implementation TurboDBOnLoad
 
 using namespace facebook::react;
 
 + (void)load
 {
   registerCxxModuleToGlobalModuleMap(
-    std::string(NativeSecureDBCxxSpec<SecureDBImpl>::kModuleName),
+    std::string(NativeTurboDBCxxSpec<TurboDBImpl>::kModuleName),
     [](std::shared_ptr<CallInvoker> jsInvoker) {
-      return std::make_shared<SecureDBImpl>(jsInvoker);
+      return std::make_shared<TurboDBImpl>(jsInvoker);
     }
   );
 }

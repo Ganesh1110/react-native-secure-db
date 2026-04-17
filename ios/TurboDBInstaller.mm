@@ -1,13 +1,13 @@
 #import <Foundation/Foundation.h>
 #import <React/RCTBridgeModule.h>
-#import "SecureDBImpl.h"
+#import "TurboDBImpl.h"
 
-@interface SecureDBInstaller : NSObject <RCTBridgeModule>
+@interface TurboDBInstaller : NSObject <RCTBridgeModule>
 @end
 
-@implementation SecureDBInstaller
+@implementation TurboDBInstaller
 
-RCT_EXPORT_MODULE(SecureDBInstaller);
+RCT_EXPORT_MODULE(TurboDBInstaller);
 
 
 RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install)

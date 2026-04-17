@@ -7,7 +7,7 @@
 #include <atomic>
 #include "PersistentBPlusTree.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 struct InsertOperation {
     std::string key;

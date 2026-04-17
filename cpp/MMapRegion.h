@@ -3,7 +3,7 @@
 #include <string>
 #include <stdexcept>
 
-namespace secure_db {
+namespace turbo_db {
 
 class MMapRegion {
 public:

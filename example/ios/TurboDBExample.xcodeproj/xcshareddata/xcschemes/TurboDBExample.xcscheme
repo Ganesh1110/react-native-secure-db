@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "SecureDBExample.app"
-               BlueprintName = "SecureDBExample"
-               ReferencedContainer = "container:JSIStorageExample.xcodeproj">
+               BuildableName = "TurboDBExample.app"
+               BlueprintName = "TurboDBExample"
+               ReferencedContainer = "container:TurboDBExample.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "SecureDBExampleTests.xctest"
-               BlueprintName = "SecureDBExampleTests"
-               ReferencedContainer = "container:JSIStorageExample.xcodeproj">
+               BuildableName = "TurboDBExampleTests.xctest"
+               BlueprintName = "TurboDBExampleTests"
+               ReferencedContainer = "container:TurboDBExample.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SecureDBExample.app"
-            BlueprintName = "SecureDBExample"
-            ReferencedContainer = "container:JSIStorageExample.xcodeproj">
+            BuildableName = "TurboDBExample.app"
+            BlueprintName = "TurboDBExample"
+            ReferencedContainer = "container:TurboDBExample.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SecureDBExample.app"
-            BlueprintName = "SecureDBExample"
-            ReferencedContainer = "container:JSIStorageExample.xcodeproj">
+            BuildableName = "TurboDBExample.app"
+            BlueprintName = "TurboDBExample"
+            ReferencedContainer = "container:TurboDBExample.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

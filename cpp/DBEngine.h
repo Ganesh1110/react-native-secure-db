@@ -16,7 +16,7 @@
 #include "ThreadPool.h"
 #include "WALManager.h"
 
-namespace secure_db {
+namespace turbo_db {
 
 class LazyRecordProxy;
 
@@ -75,6 +75,7 @@ public:
     );
     
     std::vector<std::string> getAllKeys();
+    std::vector<std::string> getAllKeysPaged(int limit, int offset);
     bool deleteAll();
     
 private:

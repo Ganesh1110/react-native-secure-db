@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <map>
 
-namespace secure_db {
+namespace turbo_db {
 
 BufferedBTree::BufferedBTree(PersistentBPlusTree* tree) : tree_(tree) {
     worker_ = std::thread(&BufferedBTree::worker_thread, this);

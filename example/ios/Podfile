@@ -17,8 +17,8 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'SecureDBExample' do
-  project 'JSIStorageExample.xcodeproj'
+target 'TurboDBExample' do
+  project 'TurboDBExample.xcodeproj'
   config = use_native_modules!
 
   use_react_native!(
@@ -99,8 +99,10 @@ target 'SecureDBExample' do
       `chmod -R +w #{libsodium_path}`
       # 1. Rename all utils.h files
       `find #{libsodium_path} -name "utils.h"`.split("\n").each do |file|
-        dir = File.dirname(file)
-        `mv #{file} #{dir}/sodium_utils.h`
+        if File.exist?(file)
+          dir = File.dirname(file)
+          `mv #{file} #{dir}/sodium_utils.h`
+        end
       end
       # 2. Update all includes
       `grep -r "include \\\"utils.h\\\"" #{libsodium_path} | cut -d: -f1 | sort | uniq`.split("\n").each do |file|

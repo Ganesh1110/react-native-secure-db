@@ -1,4 +1,4 @@
-import { SecureDB } from '../index';
+import { TurboDB } from '../index';
 
 jest.mock('react-native', () => ({
   TurboModuleRegistry: {
@@ -46,11 +46,11 @@ const storage = new Map<string, any>();
   }),
 };
 
-describe('SecureDB', () => {
-  let db: SecureDB;
+describe('TurboDB', () => {
+  let db: TurboDB;
 
   beforeEach(() => {
-    db = new SecureDB('/tmp/test.db');
+    db = new TurboDB('/tmp/test.db');
     storage.clear();
     jest.clearAllMocks();
   });

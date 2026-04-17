@@ -6,7 +6,7 @@
 #include <memory>
 #include <cstring>
 
-namespace secure_db {
+namespace turbo_db {
 
 class CachedCryptoContext : public SecureCryptoContext {
 public:

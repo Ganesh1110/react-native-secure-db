@@ -6,7 +6,7 @@
 #include <cstring>
 #include <iostream>
 
-namespace secure_db {
+namespace turbo_db {
 
 MMapRegion::MMapRegion() : base_addr_(MAP_FAILED), size_(0), fd_(-1), mapped_(false) {}
 
@@ -102,4 +102,4 @@ const uint8_t* MMapRegion::get_address(size_t offset) const {
     return static_cast<const uint8_t*>(base_addr_) + offset;
 }
 
-} // namespace secure_db
+} // namespace turbo_db

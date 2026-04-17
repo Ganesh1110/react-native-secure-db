@@ -1,7 +1,7 @@
 import { TurboModuleRegistry } from 'react-native';
-import type { Spec } from './NativeSecureDB';
+import type { Spec } from './NativeTurboDB';
 
-const NativeSecureDB = TurboModuleRegistry.get<Spec>('SecureDB');
+const NativeTurboDB = TurboModuleRegistry.get<Spec>('TurboDB');
 
 declare const global: {
   NativeDB: {
@@ -20,7 +20,9 @@ declare const global: {
       endKey: string
     ): Array<{ key: string; value: any }>;
     getAllKeys(): string[];
+    getAllKeysPaged(limit: number, offset: number): string[];
     flush(): void;
+    // Async variants
     setMultiAsync(entries: Record<string, any>): Promise<boolean>;
     getMultipleAsync(keys: string[]): Promise<Record<string, any>>;
     rangeQueryAsync(args: {
@@ -33,35 +35,27 @@ declare const global: {
 
 export type DBMode = 'secure' | 'turbo';
 
-export interface SecureDBConfig {
-  path: string;
-  size?: number;
-  maxKeys?: number;
-  keySize?: number;
-  mode?: DBMode;
-}
-
 export interface RangeQueryResult {
   key: string;
   value: any;
 }
 
-export class SecureDB {
+export class TurboDB {
   static install(): void {
-    if (!NativeSecureDB) {
+    if (!NativeTurboDB) {
       console.error(
-        "SecureDB: Native module 'SecureDB' not found. " +
+        "TurboDB: Native module 'TurboDB' not found. " +
           'Ensure you have rebuilt the native app (npx react-native run-ios / run-android) ' +
           'and that the module is correctly linked.'
       );
       return;
     }
-    NativeSecureDB.install();
+    NativeTurboDB.install();
   }
 
   static getDocumentsDirectory(): string {
-    if (!NativeSecureDB) return '';
-    return NativeSecureDB.getDocumentsDirectory();
+    if (!NativeTurboDB) return '';
+    return NativeTurboDB.getDocumentsDirectory();
   }
 
   private isInitialized = false;
@@ -73,15 +67,15 @@ export class SecureDB {
 
   private ensureInitialized() {
     if (!this.isInitialized) {
-      if (!NativeSecureDB) {
+      if (!NativeTurboDB) {
         throw new Error(
-          'SecureDB: Native module not found. Check your native build.'
+          'TurboDB: Native module not found. Check your native build.'
         );
       }
 
       // Try to install and check for NativeDB
       for (let i = 0; i < 3; i++) {
-        SecureDB.install();
+        TurboDB.install();
         if (typeof global.NativeDB !== 'undefined') {
           break;
         }
@@ -93,16 +87,23 @@ export class SecureDB {
 
       if (typeof global.NativeDB === 'undefined') {
         throw new Error(
-          'SecureDB: NativeDB JSI object not found after install(). Check native logs.'
+          'TurboDB: NativeDB JSI object not found after install(). Check native logs.'
         );
       }
 
       const success = global.NativeDB.initStorage(this.path, this.size);
       if (!success) {
-        throw new Error(`Failed to initialize SecureDB at ${this.path}`);
+        throw new Error(`Failed to initialize TurboDB at ${this.path}`);
       }
       this.isInitialized = true;
     }
+  }
+
+  // --- Synchronous API ---
+
+  has(key: string): boolean {
+    this.ensureInitialized();
+    return global.NativeDB.findRec(key) !== undefined;
   }
 
   set(key: string, value: any): boolean {
@@ -131,8 +132,7 @@ export class SecureDB {
   }
 
   del(key: string): boolean {
-    this.ensureInitialized();
-    return global.NativeDB.del(key);
+    return this.remove(key);
   }
 
   deleteAll(): boolean {
@@ -155,6 +155,11 @@ export class SecureDB {
     return global.NativeDB.getAllKeys();
   }
 
+  getAllKeysPaged(limit: number, offset: number): string[] {
+    this.ensureInitialized();
+    return global.NativeDB.getAllKeysPaged(limit, offset);
+  }
+
   clear(): boolean {
     this.ensureInitialized();
     return global.NativeDB.clearStorage();
@@ -163,6 +168,16 @@ export class SecureDB {
   flush(): void {
     this.ensureInitialized();
     global.NativeDB.flush();
+  }
+
+  // --- Asynchronous API ---
+
+  async setAsync(key: string, value: any): Promise<boolean> {
+    return this.set(key, value);
+  }
+
+  async getAsync<T = any>(key: string): Promise<T | undefined> {
+    return this.get<T>(key);
   }
 
   async setMultiAsync(entries: Record<string, any>): Promise<boolean> {
@@ -189,4 +204,4 @@ export class SecureDB {
   }
 }
 
-export default SecureDB;
+export default TurboDB;

@@ -1,4 +1,4 @@
-package com.securedb;
+package com.turbodb;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -6,7 +6,7 @@ import android.util.Base64;
 import java.security.SecureRandom;
 
 public class KeyStoreManager {
-  private static final String PREF_NAME = "SecureDBPrefs";
+  private static final String PREF_NAME = "TurboDBPrefs";
   private static final String KEY_MASTER_KEY = "master_key";
 
   private static Context context;

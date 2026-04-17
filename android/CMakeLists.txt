@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.4.1)
-project(SecureDB)
+project(TurboDB)
 
 set(PACKAGE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
@@ -8,9 +8,8 @@ add_library(sodium SHARED IMPORTED)
 set_target_properties(sodium PROPERTIES IMPORTED_LOCATION 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main/jniLibs/${ANDROID_ABI}/libsodium.so)
 
-add_library(
-    react-native-secure-db    SHARED
-    src/main/cpp/SecureDBModule.cpp
+add_library(react-native-turbo-db SHARED
+    src/main/cpp/TurboDBModule.cpp
     ../cpp/BinarySerializer.cpp
     ../cpp/BufferedBTree.cpp
     ../cpp/DBEngine.cpp
@@ -24,7 +23,7 @@ add_library(
 )
 
 set_target_properties(
-    react-native-secure-db PROPERTIES
+    react-native-turbo-db PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
@@ -36,7 +35,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp/include
     ${CMAKE_CURRENT_SOURCE_DIR}/generated/jni
-    ${CMAKE_CURRENT_SOURCE_DIR}/generated/jni/react/renderer/components/SecureDBSpec
+    ${CMAKE_CURRENT_SOURCE_DIR}/generated/jni/react/renderer/components/TurboDBSpec
     ${REACT_NATIVE_DIR}/ReactCommon/jsi
     ${REACT_NATIVE_DIR}/ReactCommon
     ${REACT_NATIVE_DIR}/React
@@ -49,7 +48,7 @@ find_library(ANDROID_LIB android)
 # React Native prefab targets
 find_package(ReactAndroid REQUIRED CONFIG)
 
-target_link_libraries(react-native-secure-db
+target_link_libraries(react-native-turbo-db
     ${LOG_LIB}
     ${ANDROID_LIB}
     sodium

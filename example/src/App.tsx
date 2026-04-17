@@ -13,7 +13,7 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
-import { SecureDB } from 'react-native-secure-db';
+import { TurboDB } from 'react-native-turbo-db';
 
 if (
   Platform.OS === 'android' &&
@@ -35,12 +35,12 @@ const BenchmarkPage = () => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResults([]);
 
-      const docsDir = SecureDB.getDocumentsDirectory();
+      const docsDir = TurboDB.getDocumentsDirectory();
       const benchPath = `${docsDir}/bench_turbo_standalone.db`;
-      const secureDB = new SecureDB(benchPath, 20 * 1024 * 1024);
+      const secureDB = new TurboDB(benchPath, 20 * 1024 * 1024);
 
       // Force initial installation
-      SecureDB.install();
+      TurboDB.install();
       secureDB.clear();
 
       const entries: Record<string, any> = {};
@@ -169,7 +169,7 @@ export default function App() {
   const [rangeStart, setRangeStart] = useState('a');
   const [rangeEnd, setRangeEnd] = useState('z');
 
-  const [db, setDb] = useState<SecureDB | null>(null);
+  const [db, setDb] = useState<TurboDB | null>(null);
 
   const refreshKeys = useCallback(() => {
     if (!db) return;
@@ -182,11 +182,11 @@ export default function App() {
   }, [db]);
 
   useEffect(() => {
-    SecureDB.install();
-    const docPath = SecureDB.getDocumentsDirectory();
+    TurboDB.install();
+    const docPath = TurboDB.getDocumentsDirectory();
     setDbPath(docPath);
     const dbFile = `${docPath}/secure_v1.db`;
-    setDb(new SecureDB(dbFile, 10 * 1024 * 1024));
+    setDb(new TurboDB(dbFile, 10 * 1024 * 1024));
   }, []);
 
   useEffect(() => {
@@ -312,7 +312,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>SecureDB</Text>
+          <Text style={styles.title}>TurboDB</Text>
           <Text style={styles.subtitle}>Unified Crypto + JSI B-Tree</Text>
         </View>
 

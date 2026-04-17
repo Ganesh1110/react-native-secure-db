@@ -6,7 +6,7 @@
 #include "DBEngine.h"
 #include "SodiumCryptoContext.h"
 
-#define LOG_TAG "SecureDB_JNI"
+#define LOG_TAG "TurboDB_JNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
@@ -14,7 +14,7 @@ using namespace facebook;
 
 static std::vector<uint8_t> getMasterKeyFromJava(JNIEnv *env) {
     LOGI("getMasterKeyFromJava: fetching master key...");
-    jclass cls = env->FindClass("com/securedb/KeyStoreManager");
+    jclass cls = env->FindClass("com/turbodb/KeyStoreManager");
     if (env->ExceptionCheck()) {
         LOGE("Failed to find KeyStoreManager class");
         env->ExceptionClear();
@@ -67,20 +67,20 @@ static std::vector<uint8_t> getMasterKeyFromJava(JNIEnv *env) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_securedb_SecureDBModule_nativeInstall(JNIEnv *env, jobject thiz, jlong jsi_runtime_pointer, jint install_mode) {
+Java_com_turbodb_TurboDBModule_nativeInstall(JNIEnv *env, jobject thiz, jlong jsi_runtime_pointer, jint install_mode) {
     LOGI("nativeInstall: starting installation, mode=%d...", install_mode);
     auto runtime = reinterpret_cast<jsi::Runtime *>(jsi_runtime_pointer);
     
     if (runtime) {
         try {
             LOGI("nativeInstall: creating SodiumCryptoContext (Turbo Mode)");
-            auto crypto = std::make_unique<secure_db::SodiumCryptoContext>();
+            auto crypto = std::make_unique<turbo_db::SodiumCryptoContext>();
             
             std::vector<uint8_t> key = getMasterKeyFromJava(env);
             crypto->setMasterKey(key);
             
             LOGI("nativeInstall: installing Turbo DB Engine");
-            secure_db::installDBEngine(*runtime, nullptr, std::move(crypto));
+            turbo_db::installDBEngine(*runtime, nullptr, std::move(crypto));
             LOGI("nativeInstall: Turbo Mode installation complete");
         } catch (const std::exception& e) {
             LOGE("nativeInstall error: %s", e.what());
@@ -89,7 +89,7 @@ Java_com_securedb_SecureDBModule_nativeInstall(JNIEnv *env, jobject thiz, jlong 
         } catch (...) {
             LOGE("nativeInstall unknown error");
             jclass xcls = env->FindClass("java/lang/RuntimeException");
-            if (xcls) env->ThrowNew(xcls, "Unknown native exception during SecureDB installation");
+            if (xcls) env->ThrowNew(xcls, "Unknown native exception during TurboDB installation");
         }
     } else {
         LOGE("nativeInstall: runtime pointer is null");
