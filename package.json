@@ -1,15 +1,14 @@
 {
   "name": "react-native-turbo-db",
-  "version": "0.1.0",
-  "description": "Secure JSI-driven embedded key-value database for React Native. High-performance encrypted storage with hardware-backed keys, ACID compliance, and SSR/isomorphic support. Fast AsyncStorage alternative.",
+  "version": "1.0.0",
+  "description": "High-performance JSI-driven embedded key-value database for React Native with encryption, WAL logging, B+tree indexing, and SSR/isomorphic support. Fast AsyncStorage alternative.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
     ".": {
-      "import": "./lib/module/index.js",
-      "require": "./lib/commonjs/index.js",
       "types": "./lib/typescript/src/index.d.ts",
-      "browser": "./src/index.web.ts",
+      "import": "./lib/module/index.js",
+      "require": "./lib/module/index.js",
       "default": "./lib/module/index.js"
     },
     "./package.json": "./package.json"
@@ -48,25 +47,24 @@
   },
   "keywords": [
     "react-native",
-    "ios",
-    "android",
     "jsi",
     "turbo-module",
-    "secure",
-    "database",
-    "encrypted",
-    "storage",
-    "key-value",
+    "secure-database",
+    "encrypted-storage",
+    "key-value-store",
+    "embedded-database",
     "performance",
     "ssr",
     "isomorphic",
     "web",
-    "core-web-vitals",
     "asyncstorage",
     "encryption",
-    "aes-256",
+    "libsodium",
+    "xchacha20",
     "keychain",
-    "keystore"
+    "keystore",
+    "b-tree",
+    "mmap"
   ],
   "repository": {
     "type": "git",
